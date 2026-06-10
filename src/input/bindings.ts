@@ -83,3 +83,25 @@ export const ACTION_LABELS: Record<GameAction, string> = {
   toggleDebugOverlay: 'Debug Overlay',
   toggleDebugMenu: 'Developer Menu',
 };
+
+/**
+ * Conflict-safe assignment: binds `code` to `action`, unbinding any other
+ * action that held the same key. Returns the displaced action (so the UI can
+ * warn) or null. Two actions must never silently share one key.
+ */
+export function assignBinding(
+  binds: Record<GameAction, string>,
+  action: GameAction,
+  code: string,
+): GameAction | null {
+  let displaced: GameAction | null = null;
+  for (const key of Object.keys(binds) as GameAction[]) {
+    if (key !== action && binds[key] === code) {
+      binds[key] = '';
+      displaced = key;
+      break;
+    }
+  }
+  binds[action] = code;
+  return displaced;
+}

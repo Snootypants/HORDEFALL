@@ -86,6 +86,8 @@ export interface SaveDataV2 {
     totalKills: number;
     totalPlaytimeSec: number;
     achievements: string[];
+    /** First-run controls overlay already shown. */
+    seenControlsHint: boolean;
   };
   unlocks: {
     weapons: string[];
@@ -128,6 +130,7 @@ export function defaultSaveData(): SaveDataV2 {
       totalKills: 0,
       totalPlaytimeSec: 0,
       achievements: [],
+      seenControlsHint: false,
     },
     unlocks: {
       weapons: ['pistol'],

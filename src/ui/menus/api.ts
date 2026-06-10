@@ -26,6 +26,8 @@ export interface GameApi {
   quitToMenu(): void;
   retryRun(): void;
   openScreen(name: ScreenName): void;
+  /** First-run controls overlay: mark seen and enter the field. */
+  confirmControls(): void;
   /** Persist saveData and apply settings to live systems. */
   applySettings(): void;
   applyUpgradeChoice(id: string): void;

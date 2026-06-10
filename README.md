@@ -41,13 +41,16 @@ npm run preview    # serve the production bundle
 ## 5. Test
 
 ```bash
-npm test           # full suite (145 tests)
+npm test           # full suite (195 tests)
 npm run test:watch # watch mode
 npm run smoke      # smoke-test mode: boots the entire simulation headless,
                    # plays several seconds of game, stress-ticks 500 enemies
+npm run e2e        # browser E2E (Playwright/Chromium): boots the real app,
+                   # deploys, checks HUD/renderer/menus/stress, fails on any
+                   # page error. First run: npx playwright install chromium
 ```
 
-Tests live in `tests/`. Pure logic (math, RNG, pools, spatial hash, damage, waves, scaling, status effects, save migration, config validation, progression) is unit-tested; `tests/smoke.test.ts` is the integration net that runs the real `Simulation` with no DOM or renderer.
+Tests live in `tests/`. Pure logic (math, RNG, pools, spatial hash, damage, waves, scaling, status effects, revives, corpse budgets, boss phases, save migration, config validation, progression) is unit-tested; `tests/smoke.test.ts` is the integration net that runs the real `Simulation` with no DOM or renderer; `tests/simBoundary.test.ts` is an architecture guardrail that fails if `src/sim` ever imports Three.js/DOM/presentation modules; `e2e/smoke.spec.ts` is the in-browser runtime net.
 
 ## 6. Architecture Overview
 
@@ -165,7 +168,7 @@ The F3 overlay shows FPS, frame/sim/AI/render ms, draw calls, triangles, entity/
 - **Enemy navigation is steering-based, not pathfinding.** Enemies seek + separate + slide around obstacles; deep concave pockets can briefly pen them. Fine for arena layouts by design; a flow-field would be the upgrade.
 - **Enemies don't climb platforms** — verticality is the player's escape valve (they'll wait below; spitters will still hit you).
 - **Ramps are stepped colliders** (visual staircase matches collision, but smooth-slope sliding is approximated).
-- **Run restarts reuse the same WebGL context**; long sessions with many restarts may accumulate some GPU memory (scene is cleared and disposed, but Three.js caching is conservative). A page refresh fully resets.
+- **Run restarts rebuild the renderer on the same canvas.** Teardown deep-disposes every geometry/material/texture, the composer, and the per-run resize listener (`render/disposeUtils.ts`); Three.js's internal program cache is the only thing intentionally kept warm. A page refresh fully resets.
 - Hit volumes are spheres (fast, fair at horde scale) rather than per-limb capsules; the headshot zone is a height band.
 - Shadow-toggle changes mid-run rebuild materials lazily; full effect on next run.
 - Audio is intentionally lo-fi synthesis; throttling caps identical sounds per 35–150 ms window.

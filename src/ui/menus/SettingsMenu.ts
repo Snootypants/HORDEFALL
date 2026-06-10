@@ -8,7 +8,7 @@ import { el, button, settingRow, slider, checkbox, select } from '../dom';
 import { playUiSound } from '../uiSound';
 import type { Screen } from '../UIManager';
 import type { GameApi } from './api';
-import { ACTION_LABELS, DEFAULT_KEYBINDS, type GameAction } from '../../input/bindings';
+import { ACTION_LABELS, DEFAULT_KEYBINDS, assignBinding, type GameAction } from '../../input/bindings';
 import type { GraphicsQuality } from '../../save/SaveManager';
 
 const QUALITY_PRESETS: Record<GraphicsQuality, { shadows: boolean; particles: boolean; postProcessing: boolean; renderScale: number; maxDecals: number; maxCorpses: number; maxParticles: number }> = {
@@ -24,6 +24,7 @@ export function createSettingsMenu(api: GameApi): Screen {
   const tabs = el('div', { className: 'tabs' });
   const body = el('div');
   let activeTab = 'game';
+  let conflictMsg = '';
 
   const tabNames = ['game', 'graphics', 'audio', 'controls'] as const;
   const tabButtons = new Map<string, HTMLElement>();
@@ -91,18 +92,25 @@ export function createSettingsMenu(api: GameApi): Screen {
         })));
       }
     } else {
-      // Controls — rebinding
-      body.append(el('div', { className: 'muted', text: 'Click a binding, then press any key or mouse button. ESC cancels.' }));
+      // Controls — rebinding with conflict detection
+      body.append(el('div', { className: 'muted', text: 'Click a binding, then press any key or mouse button. ESC cancels. Stealing a key unbinds its old action.' }));
+      const conflictNote = el('div', { className: 'muted', text: conflictMsg });
+      conflictNote.style.color = 'var(--alarm)';
+      body.append(conflictNote);
       for (const action of Object.keys(ACTION_LABELS) as GameAction[]) {
         const bindBtn = el('button', { className: 'bind-btn', text: prettyKey(s.keybinds[action]) });
+        if (!s.keybinds[action]) bindBtn.classList.add('listening');
         bindBtn.addEventListener('click', () => {
           playUiSound('click');
           bindBtn.classList.add('listening');
           bindBtn.textContent = 'PRESS KEY…';
           api.input.captureNextKey((code) => {
             if (code !== 'Escape') {
-              s.keybinds[action] = code;
+              const displaced = assignBinding(s.keybinds, action, code);
               api.applySettings();
+              conflictMsg = displaced ? `⚠ ${ACTION_LABELS[displaced]} is now UNBOUND — rebind it.` : '';
+              render();
+              return;
             }
             bindBtn.classList.remove('listening');
             bindBtn.textContent = prettyKey(s.keybinds[action]);
@@ -130,6 +138,7 @@ export function createSettingsMenu(api: GameApi): Screen {
 }
 
 function prettyKey(code: string): string {
+  if (!code) return 'UNBOUND';
   return code
     .replace('Key', '')
     .replace('Digit', '')

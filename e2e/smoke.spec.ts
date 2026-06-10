@@ -44,8 +44,10 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   await expect(page.locator('#game-canvas')).toBeAttached();
   await expect(screen.getByRole('button', { name: /Deploy/ })).toBeVisible();
 
-  // --- Start a run
+  // --- Start a run; the very first deployment shows the controls briefing
   await screen.getByRole('button', { name: /Deploy/ }).click();
+  await expect(screen.locator('.heading', { hasText: 'Field Manual' })).toBeVisible();
+  await screen.getByRole('button', { name: 'DEPLOY' }).click();
   await expect(page.locator('#hud')).toBeVisible();
 
   // Run is actually live: sim exists and the renderer is drawing real geometry.
@@ -88,6 +90,7 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   await expect(screen.locator('.heading', { hasText: 'Paused' })).toBeVisible();
   await screen.getByRole('button', { name: 'Abandon Run' }).click();
   await expect(screen.getByRole('button', { name: /Deploy/ })).toBeVisible();
+  // Second deployment: the one-time briefing must NOT reappear.
   await screen.getByRole('button', { name: /Deploy/ }).click();
   await expect(page.locator('#hud')).toBeVisible();
   await page.waitForTimeout(600);

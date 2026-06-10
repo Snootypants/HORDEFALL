@@ -15,6 +15,7 @@ export type ScreenName =
   | 'shop'
   | 'game-over'
   | 'debug-menu'
+  | 'controls'
   | 'none';
 
 export interface Screen {

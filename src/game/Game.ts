@@ -6,7 +6,6 @@
 
 import { MAPS, mapById } from '../config/maps';
 import { validateAllConfigs, formatValidationReport } from '../config/validation';
-import { BALANCE } from '../config/balance';
 import { FixedTimestepLoop } from '../core/GameLoop';
 import { Logger, LogLevel } from '../core/Logger';
 import { Simulation } from '../sim/Simulation';
@@ -26,6 +25,7 @@ import { PerfOverlay } from '../debug/PerfOverlay';
 import { AchievementTracker } from './achievements';
 import { registerScreens } from './setupScreens';
 import { runDevAction, type DevAction } from './devActions';
+import { buyShopItem } from './shopActions';
 import { persistRunResults } from './persistRun';
 import type { GameApi } from '../ui/menus/api';
 import type { DebugDraw } from '../render/DebugDraw';
@@ -134,6 +134,14 @@ export class Game implements GameApi {
     this.playing = true;
     this.gameOverPending = 0;
     this.loop.reset();
+    // First deployment ever: brief the player before pointer lock.
+    if (!this.saveData.profile.seenControlsHint) this.openScreen('controls');
+    else this.resumeGame();
+  }
+
+  confirmControls(): void {
+    this.saveData.profile.seenControlsHint = true;
+    this.saveManager.save(this.saveData);
     this.resumeGame();
   }
 
@@ -346,33 +354,7 @@ export class Game implements GameApi {
   }
 
   buyShopItem(kind: Parameters<GameApi['buyShopItem']>[0]): boolean {
-    const sim = this.sim;
-    if (!sim) return false;
-    const eco = BALANCE.economy;
-    const tryBuy = (price: number, apply: () => void): boolean => {
-      if (sim.credits < price) return false;
-      sim.credits -= price;
-      apply();
-      this.audio.play('purchase');
-      return true;
-    };
-    if (kind === 'ammo') return tryBuy(eco.ammoPrice, () => sim.weapons.refillCurrent());
-    if (kind === 'health') return tryBuy(eco.healthPrice, () => sim.player.heal(50));
-    if (kind === 'armor') return tryBuy(eco.armorPrice, () => sim.player.addArmor(50));
-    if (kind.startsWith('unlock:')) {
-      const id = kind.slice(7);
-      const cfg = sim.weapons.weapons.find((w) => w.id === id);
-      if (!cfg) return false;
-      return tryBuy(cfg.unlockCost, () => sim.weapons.unlock(id));
-    }
-    if (kind.startsWith('tier:')) {
-      const id = kind.slice(5);
-      const cfg = sim.weapons.weapons.find((w) => w.id === id);
-      const rt = sim.weapons.runtime.get(id);
-      if (!cfg || !rt || rt.tier >= cfg.upgrades.length) return false;
-      return tryBuy(cfg.upgrades[rt.tier].cost, () => sim.weapons.buyUpgradeTier(id));
-    }
-    return false;
+    return this.sim ? buyShopItem(this.sim, this.audio, kind) : false;
   }
 
   // ------------------------------------------------------------- api: dev
