@@ -97,7 +97,8 @@ export function validateConfigSet(set: ConfigSet): ValidationReport {
     for (const [i, tier] of w.upgrades.entries()) {
       nonNegative(errors, tag, `upgrades[${i}].cost`, tier.cost);
     }
-    if (w.upgrades.length === 0) warnings.push(`${tag}: has no upgrade path`);
+    // The melee fallback intentionally has no upgrade path — guns only.
+    if (w.upgrades.length === 0 && w.kind !== 'melee') warnings.push(`${tag}: has no upgrade path`);
   }
   if (!set.weapons.some((w) => w.unlockedByDefault)) {
     errors.push('weapons: at least one weapon must be unlockedByDefault');

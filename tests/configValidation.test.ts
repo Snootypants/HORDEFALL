@@ -23,6 +23,18 @@ describe('config validation', () => {
     expect(report.errors).toEqual([]);
   });
 
+  test('melee fallback with no upgrades is intended — no warning', () => {
+    const report = validateAllConfigs();
+    expect(report.warnings.some((w) => w.includes('machete') && w.includes('no upgrade path'))).toBe(false);
+  });
+
+  test('a GUN with no upgrade path still warns', () => {
+    const set = baseSet();
+    set.weapons.find((w) => w.id === 'pistol')!.upgrades = [];
+    const report = validateConfigSet(set);
+    expect(report.warnings.some((w) => w.includes('pistol') && w.includes('no upgrade path'))).toBe(true);
+  });
+
   test('duplicate weapon ids are an error', () => {
     const set = baseSet();
     set.weapons.push(clone(set.weapons[0]));

@@ -34,7 +34,7 @@ export interface ProjectileSpec {
 export interface WeaponConfig {
   id: WeaponId;
   name: string;
-  /** HUD slot and number-key (1-based). */
+  /** HUD slot and number-key (0 = melee fallback, 1-6 = guns). */
   slot: number;
   description: string;
   kind: 'hitscan' | 'projectile' | 'melee';

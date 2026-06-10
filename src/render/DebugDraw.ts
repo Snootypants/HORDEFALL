@@ -34,8 +34,12 @@ export class DebugDraw {
   constructor(scene: THREE.Scene, sim: Simulation) {
     this.sim = sim;
 
-    // Unit capsule-ish cylinder, scaled per-instance to the REAL hit volume
-    // (hitVolumeOf — the same numbers the raycast tests against).
+    // Hit-volume BOUNDS as a cylinder, scaled per-instance from hitVolumeOf —
+    // the same radius/yBottom/yTop the raycast uses. Note: the actual raycast
+    // volume is a vertical CAPSULE (rayVerticalCapsule); its rounded caps sit
+    // inside these bounds, so this cylinder is slightly generous at the rim
+    // of the top/bottom faces. One shared unit mesh — no per-frame geometry
+    // rebuilds.
     this.hitboxMesh = new THREE.InstancedMesh(
       new THREE.CylinderGeometry(1, 1, 1, 10, 1),
       new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true, transparent: true, opacity: 0.5 }),
