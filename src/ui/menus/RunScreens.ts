@@ -118,6 +118,7 @@ export function createShopScreen(api: GameApi): Screen {
       shopBtn(api, render, 'armor', '+50 armor', eco.armorPrice,
         p.armor >= p.maxArmor ? 'armor full' : undefined),
       ...WEAPONS.flatMap((w) => {
+        if (w.kind === 'melee') return []; // free fallback — nothing to sell
         const rt = sim.weapons.runtime.get(w.id)!;
         if (!rt.unlocked) {
           return [shopBtn(api, render, `unlock:${w.id}`, `Unlock ${w.name}`, w.unlockCost)];

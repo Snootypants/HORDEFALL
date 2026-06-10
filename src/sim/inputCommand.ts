@@ -18,7 +18,7 @@ export interface InputCommand {
   firePressed: boolean;
   aim: boolean;
   reload: boolean;
-  /** 1-based weapon slot request, or 0 for none. */
+  /** Weapon slot request (0 = melee, 1-6 = guns), or -1 for none. */
   weaponSlot: number;
   /** Scroll-wheel weapon cycling: -1, 0, or 1. */
   weaponDelta: number;
@@ -38,7 +38,7 @@ export const neutralInput = (): InputCommand => ({
   firePressed: false,
   aim: false,
   reload: false,
-  weaponSlot: 0,
+  weaponSlot: -1,
   weaponDelta: 0,
   lookDX: 0,
   lookDY: 0,
@@ -49,7 +49,7 @@ export const resetFrameEdges = (cmd: InputCommand): void => {
   cmd.firePressed = false;
   cmd.reload = false;
   cmd.jump = false;
-  cmd.weaponSlot = 0;
+  cmd.weaponSlot = -1;
   cmd.weaponDelta = 0;
   cmd.lookDX = 0;
   cmd.lookDY = 0;

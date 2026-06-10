@@ -123,6 +123,12 @@ function buildGunMesh(cfg: WeaponConfig): THREE.Group {
   add(new THREE.BoxGeometry(0.045, 0.11, 0.05), grip, 0, -0.085, 0.02);
 
   switch (cfg.id) {
+    case 'machete': {
+      // Blade + spine instead of a barrel; the common receiver reads as a grip.
+      add(new THREE.BoxGeometry(0.015, 0.09, 0.46), body, 0, 0.05, -0.32);
+      add(new THREE.BoxGeometry(0.02, 0.02, 0.46), accent, 0, 0.1, -0.32);
+      break;
+    }
     case 'pistol':
       add(new THREE.BoxGeometry(0.04, 0.05, 0.18), body, 0, 0.02, -0.26);
       break;

@@ -63,8 +63,17 @@ export function validateConfigSet(set: ConfigSet): ValidationReport {
     const tag = `weapon "${w.id}"`;
     positive(errors, tag, 'damage', w.damage);
     positive(errors, tag, 'rpm', w.rpm);
-    positive(errors, tag, 'magSize', w.magSize);
-    positive(errors, tag, 'reloadTime', w.reloadTime);
+    if (w.kind === 'melee') {
+      if (!w.melee) errors.push(`${tag}: melee weapons need a melee block`);
+      else {
+        positive(errors, tag, 'melee.range', w.melee.range);
+        positive(errors, tag, 'melee.arcDeg', w.melee.arcDeg);
+        nonNegative(errors, tag, 'melee.knockback', w.melee.knockback);
+      }
+    } else {
+      positive(errors, tag, 'magSize', w.magSize);
+      positive(errors, tag, 'reloadTime', w.reloadTime);
+    }
     positive(errors, tag, 'pellets', w.pellets);
     positive(errors, tag, 'range', w.range);
     nonNegative(errors, tag, 'spreadDeg', w.spreadDeg);

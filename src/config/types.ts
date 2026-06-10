@@ -37,7 +37,7 @@ export interface WeaponConfig {
   /** HUD slot and number-key (1-based). */
   slot: number;
   description: string;
-  kind: 'hitscan' | 'projectile';
+  kind: 'hitscan' | 'projectile' | 'melee';
   auto: boolean;
   damage: number;
   pellets: number;
@@ -70,6 +70,8 @@ export interface WeaponConfig {
   adsZoom?: number;
   /** Camera shake per shot (0..1) — sells weapon weight. */
   fireTrauma?: number;
+  /** Melee weapons only: cone reach/width and impulse applied to victims. */
+  melee?: { range: number; arcDeg: number; knockback: number };
 }
 
 // ---------------------------------------------------------------------------

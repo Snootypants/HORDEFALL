@@ -96,7 +96,7 @@ describe('WeaponSim.powerScore', () => {
 
   it('adds 0.5 per purchased tier', () => {
     const w = makeWeapons();
-    const stock = WEAPONS.find((cfg) => cfg.unlockedByDefault)!;
+    const stock = WEAPONS.find((cfg) => cfg.unlockedByDefault && cfg.upgrades.length > 0)!;
     w.buyUpgradeTier(stock.id);
     expect(w.powerScore()).toBe(0.5);
     w.buyUpgradeTier(stock.id);

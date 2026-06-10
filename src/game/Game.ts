@@ -286,7 +286,7 @@ export class Game implements GameApi {
     p.jump ||= cmd.jump;
     p.reload ||= cmd.reload;
     p.interact ||= cmd.interact;
-    if (cmd.weaponSlot) p.weaponSlot = cmd.weaponSlot;
+    if (cmd.weaponSlot >= 0) p.weaponSlot = cmd.weaponSlot;
     if (cmd.weaponDelta) p.weaponDelta = cmd.weaponDelta;
     p.lookDX += cmd.lookDX;
     p.lookDY += cmd.lookDY;

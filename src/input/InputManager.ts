@@ -164,8 +164,8 @@ export class InputManager {
     cmd.lookDX = this.lastLookDX;
     cmd.lookDY = this.lastLookDY;
 
-    cmd.weaponSlot = 0;
-    for (let slot = 1; slot <= 6; slot++) {
+    cmd.weaponSlot = -1;
+    for (let slot = 0; slot <= 6; slot++) {
       if (this.wasPressed(`weapon${slot}` as GameAction)) cmd.weaponSlot = slot;
     }
     cmd.weaponDelta = 0;

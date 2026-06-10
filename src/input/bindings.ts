@@ -16,6 +16,7 @@ export type GameAction =
   | 'aim'
   | 'reload'
   | 'interact'
+  | 'weapon0'
   | 'weapon1'
   | 'weapon2'
   | 'weapon3'
@@ -42,6 +43,7 @@ export const DEFAULT_KEYBINDS: Record<GameAction, string> = {
   aim: 'Mouse2',
   reload: 'KeyR',
   interact: 'KeyE',
+  weapon0: 'Digit0',
   weapon1: 'Digit1',
   weapon2: 'Digit2',
   weapon3: 'Digit3',
@@ -69,6 +71,7 @@ export const ACTION_LABELS: Record<GameAction, string> = {
   aim: 'Aim',
   reload: 'Reload',
   interact: 'Interact',
+  weapon0: 'Melee (Slot 0)',
   weapon1: 'Weapon Slot 1',
   weapon2: 'Weapon Slot 2',
   weapon3: 'Weapon Slot 3',

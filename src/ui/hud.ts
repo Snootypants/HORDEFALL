@@ -211,11 +211,16 @@ export class Hud {
     const weapon = sim.weapons.current;
     const rt = sim.weapons.state();
     this.weaponName.textContent = weapon.name;
-    this.ammoCount.replaceChildren(
-      document.createTextNode(`${rt.mag} `),
-      el('span', { className: 'reserve', text: `/ ${rt.reserve}` }),
-    );
-    this.reloadHint.textContent = sim.weapons.reloading ? 'RELOADING' : rt.mag === 0 ? 'EMPTY — [R]' : '';
+    if (weapon.kind === 'melee') {
+      this.ammoCount.replaceChildren(document.createTextNode('∞'));
+      this.reloadHint.textContent = '';
+    } else {
+      this.ammoCount.replaceChildren(
+        document.createTextNode(`${rt.mag} `),
+        el('span', { className: 'reserve', text: `/ ${rt.reserve}` }),
+      );
+      this.reloadHint.textContent = sim.weapons.reloading ? 'RELOADING' : rt.mag === 0 ? 'EMPTY — [R]' : '';
+    }
 
     this.weaponSlots.replaceChildren(
       ...sim.weapons.weapons.map((w) => {

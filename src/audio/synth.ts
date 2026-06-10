@@ -69,7 +69,7 @@ function thump(ctx: AudioContext, out: AudioNode, volume: number, from = 120, du
 export type SoundName =
   | 'pistol-fire' | 'shotgun-fire' | 'rifle-fire' | 'sniper-fire' | 'launcher-fire' | 'arc-fire'
   | 'reload-light' | 'reload-shell' | 'reload-mag' | 'reload-bolt' | 'reload-heavy' | 'reload-cell'
-  | 'weapon-empty' | 'weapon-switch'
+  | 'weapon-empty' | 'weapon-switch' | 'melee-swing'
   | 'enemy-hit' | 'enemy-die' | 'enemy-attack' | 'shield-break' | 'shield-deflect' | 'fuse-warning' | 'spit'
   | 'player-hurt' | 'player-die' | 'heartbeat'
   | 'explosion' | 'pickup' | 'levelup' | 'wave-start' | 'wave-clear' | 'boss-arrival'
@@ -90,6 +90,7 @@ export const SOUND_RECIPES: Record<SoundName, SoundRecipe> = {
   'reload-cell': { bus: 'weapons', build: (c, o, v) => sweep(c, o, v * 0.35, 'triangle', 600, 1800, 0.22) },
   'weapon-empty': { bus: 'weapons', build: (c, o, v) => noiseBurst(c, o, v * 0.3, 0.04, 3000, 6, 0.001) },
   'weapon-switch': { bus: 'weapons', build: (c, o, v) => noiseBurst(c, o, v * 0.3, 0.07, 2000, 3) },
+  'melee-swing': { bus: 'weapons', build: (c, o, v) => { noiseBurst(c, o, v * 0.45, 0.12, 1200, 0.6); sweep(c, o, v * 0.25, 'triangle', 500, 180, 0.12); } },
 
   'enemy-hit': { bus: 'enemies', build: (c, o, v) => noiseBurst(c, o, v * 0.4, 0.08, 500, 1.5) },
   'enemy-die': { bus: 'enemies', build: (c, o, v) => { sweep(c, o, v * 0.4, 'sawtooth', 300, 60, 0.3); noiseBurst(c, o, v * 0.3, 0.25, 400, 1); } },

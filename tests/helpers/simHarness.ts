@@ -61,7 +61,7 @@ export function scriptedCommand(tick: number, cmd: InputCommand): InputCommand {
   cmd.aim = tick % 300 < 80;
   cmd.reload = tick % 480 === 0;
   cmd.jump = tick % 540 === 0;
-  cmd.weaponSlot = 0;
+  cmd.weaponSlot = -1;
   cmd.weaponDelta = 0;
   return cmd;
 }

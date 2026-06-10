@@ -16,6 +16,7 @@ const CONTROLS: [string, string][] = [
   ['RMB', 'aim'],
   ['R', 'reload'],
   ['1–6 / SCROLL', 'switch weapon'],
+  ['0', 'melee — never runs dry'],
   ['B', 'armory (between waves)'],
   ['ESC', 'pause'],
   ['F3 / F8 / ~', 'perf · dev menu · console'],

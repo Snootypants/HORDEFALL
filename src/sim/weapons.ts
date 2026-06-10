@@ -11,6 +11,7 @@ import type { GameBus } from './events';
 import type { Rng } from '../core/Rng';
 import { computeHitDamage } from './combat/damage';
 import { applyOnHitEffects, applyRicochet } from './combat/onHit';
+import { swingMelee } from './combat/melee';
 import { raycastEnemies, hitsWeakPoint } from './enemies/enemyQueries';
 import type { PlayerProjectiles } from './projectiles';
 import { clamp } from '../core/math';
@@ -69,7 +70,11 @@ export class WeaponSim {
         unlocked: w.unlockedByDefault || unlockedIds.includes(w.id),
       });
     }
-    this.currentId = weapons.find((w) => this.runtime.get(w.id)!.unlocked)?.id ?? weapons[0].id;
+    // Start with the first unlocked GUN; melee is a fallback, not a loadout.
+    this.currentId =
+      weapons.find((w) => w.kind !== 'melee' && this.runtime.get(w.id)!.unlocked)?.id ??
+      weapons.find((w) => this.runtime.get(w.id)!.unlocked)?.id ??
+      weapons[0].id;
   }
 
   get current(): WeaponConfig {
@@ -139,8 +144,20 @@ export class WeaponSim {
     this.bloom = Math.max(0, this.bloom - dt * 3);
 
     this.handleSwitching(input);
+    this.maybeAutoEquipMelee();
 
     const eff = this.effective(ctx);
+
+    // Melee: no mag, no reload — just swing on cooldown.
+    if (this.current.kind === 'melee') {
+      const wantsSwing = this.current.auto ? input.fire : input.firePressed;
+      if (wantsSwing && this.cooldown <= 0 && this.switchLeft <= 0) {
+        swingMelee(this.current, eff, view, ctx, this.rng, this.bus);
+        this.cooldown = 60 / eff.rpm;
+      }
+      return;
+    }
+
     const rt = this.state();
 
     if (this.reloading) {
@@ -186,24 +203,44 @@ export class WeaponSim {
   }
 
   private handleSwitching(input: InputCommand): void {
-    let targetSlot = 0;
-    if (input.weaponSlot > 0) targetSlot = input.weaponSlot;
+    let targetSlot = -1;
+    if (input.weaponSlot >= 0) targetSlot = input.weaponSlot;
     else if (input.weaponDelta !== 0) {
       const unlocked = this.weapons.filter((w) => this.runtime.get(w.id)!.unlocked).sort((a, b) => a.slot - b.slot);
       const idx = unlocked.findIndex((w) => w.id === this.currentId);
       const next = unlocked[(idx + input.weaponDelta + unlocked.length) % unlocked.length];
       targetSlot = next.slot;
     }
-    if (targetSlot > 0) {
+    if (targetSlot >= 0) {
       const target = this.weapons.find((w) => w.slot === targetSlot);
       if (target && target.id !== this.currentId && this.runtime.get(target.id)!.unlocked) {
-        this.currentId = target.id;
-        this.reloading = false;
-        this.switchLeft = 0.35;
-        this.bus.emit('weapon:switched', { weaponId: target.id });
+        this.equip(target.id);
       }
     }
   }
+
+  private equip(id: string): void {
+    this.currentId = id;
+    this.reloading = false;
+    this.switchLeft = 0.35;
+    this.bus.emit('weapon:switched', { weaponId: id });
+  }
+
+  /** Every gun bone-dry → fall back to the melee weapon automatically. */
+  private maybeAutoEquipMelee(): void {
+    if (this.current.kind === 'melee') return;
+    const rt = this.state();
+    if (rt.mag > 0 || rt.reserve > 0) return; // cheap early-out
+    const melee = this.weapons.find((w) => w.kind === 'melee');
+    if (!melee || !this.runtime.get(melee.id)!.unlocked) return;
+    for (const w of this.weapons) {
+      if (w.kind === 'melee') continue;
+      const r = this.runtime.get(w.id)!;
+      if (r.unlocked && r.mag + r.reserve > 0) return;
+    }
+    this.equip(melee.id);
+  }
+
 
   /** One trigger pull: all pellets, recoil, tracers, ammo, stats. */
   private fire(eff: EffectiveWeaponStats, view: FireView, ctx: CombatContext, projectiles: PlayerProjectiles, isFree = false): void {
