@@ -79,7 +79,10 @@ export class InputManager {
   }
 
   requestPointerLock(): void {
-    this.canvas.requestPointerLock();
+    // Chromium returns a promise that rejects where lock is unavailable
+    // (iframes, automation). The game must run unlocked, not throw.
+    const result = this.canvas.requestPointerLock() as void | Promise<void>;
+    if (result instanceof Promise) result.catch(() => {});
   }
 
   exitPointerLock(): void {

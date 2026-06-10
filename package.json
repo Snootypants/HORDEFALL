@@ -10,12 +10,15 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "vitest run tests/smoke.test.ts"
+    "smoke": "vitest run tests/smoke.test.ts",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "three": "^0.165.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.2",
     "@types/three": "^0.165.0",
     "typescript": "^5.5.0",

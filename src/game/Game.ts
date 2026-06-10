@@ -214,8 +214,10 @@ export class Game implements GameApi {
     const dtReal = Math.min(0.1, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
 
-    const cmd = this.input.sample();
+    // Hotkeys must consume their key edges BEFORE sample() clears the
+    // pressed-this-frame set, or UI keys (pause/console/shop) never fire.
     this.handleHotkeys();
+    const cmd = this.input.sample();
 
     if (this.sim && this.playing && !this.ui.uiOpen) {
       const t0 = performance.now();

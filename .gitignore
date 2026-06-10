@@ -11,6 +11,7 @@ dist/
 # Playwright artifacts
 .playwright-mcp/
 test-results/
+playwright-report/
 
 # Editor / OS
 .DS_Store
