@@ -116,6 +116,66 @@ export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: (
     }
     root.append(oddsReadout);
 
+    // ---- Named presets (own storage key — never in the profile save)
+    root.append(el('div', { className: 'muted', text: 'PRESETS — saved locally, separate from player save data' }));
+    const nameInput = el('input');
+    nameInput.placeholder = 'preset name (also used by Rename)';
+    nameInput.style.width = '100%';
+    root.append(nameInput);
+    const presetGrid = el('div', { className: 'shop-grid' });
+    presetGrid.append(
+      button('Save current as preset', () => {
+        const saved = api.tuningPresets.save(nameInput.value || 'preset', api.tuning);
+        importStatus.textContent = `saved "${saved.name}"`;
+        refresh();
+      }),
+      button('Export ALL presets JSON', () => {
+        jsonBox.value = api.tuningPresets.exportAll();
+        importStatus.textContent = 'exported all presets';
+      }),
+      button('Import preset JSON', () => {
+        const r = api.tuningPresets.importOne(jsonBox.value);
+        importStatus.textContent = r.name
+          ? `imported "${r.name}"${r.errors.length ? ` (sanitized: ${r.errors.join('; ')})` : ''}`
+          : `import failed: ${r.errors.join('; ')}`;
+        refresh();
+      }),
+      button('Import ALL presets JSON', () => {
+        const r = api.tuningPresets.importAll(jsonBox.value);
+        importStatus.textContent = `merged ${r.added} preset(s)${r.errors.length ? ` — ${r.errors.join('; ')}` : ''}`;
+        refresh();
+      }),
+    );
+    root.append(presetGrid);
+    for (const p of api.tuningPresets.list()) {
+      const row = el('div', { className: 'row' });
+      row.append(
+        el('span', { className: 'mono', text: p.name }),
+        button('Load', () => {
+          const loaded = api.tuningPresets.load(p.name);
+          if (loaded) {
+            applyTuning(api.tuning, loaded);
+            importStatus.textContent = `loaded "${p.name}"`;
+            refresh();
+          }
+        }),
+        button('Rename', () => {
+          const finalName = api.tuningPresets.rename(p.name, nameInput.value || p.name);
+          importStatus.textContent = finalName ? `renamed to "${finalName}"` : 'rename failed';
+          refresh();
+        }),
+        button('Export', () => {
+          jsonBox.value = api.tuningPresets.exportOne(p.name) ?? '';
+          importStatus.textContent = `exported "${p.name}"`;
+        }),
+        button('Delete', () => {
+          api.tuningPresets.delete(p.name);
+          refresh();
+        }, 'btn btn-danger'),
+      );
+      root.append(row);
+    }
+
     // ---- Actions
     root.append(el('div', { className: 'muted', text: 'ACTIONS' }));
     const actions = el('div', { className: 'shop-grid' });

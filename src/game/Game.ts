@@ -18,6 +18,7 @@ import { InputManager } from '../input/InputManager';
 import { UIManager, type ScreenName } from '../ui/UIManager';
 import { setUiSoundHook } from '../ui/uiSound';
 import { defaultTuning } from '../sim/tuning';
+import { TuningPresetStore } from '../save/TuningPresetStore';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/Minimap';
 import { DamageNumbers } from '../ui/DamageNumbers';
@@ -48,6 +49,8 @@ export class Game implements GameApi {
   readonly achievements: AchievementTracker;
   /** Session-lifetime tuning overrides; passed to every new Simulation. */
   readonly tuning = defaultTuning();
+  /** Named tuning presets — own storage key, never in the profile save. */
+  readonly tuningPresets = new TuningPresetStore(window.localStorage);
 
   sim: Simulation | null = null;
   renderer: GameRenderer | null = null;

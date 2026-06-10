@@ -92,6 +92,10 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   await expect(screen.getByText(/WEAPONS — damage & tiers apply LIVE/)).toBeVisible();
   await expect(screen.getByText('Global drop chance')).toBeVisible();
   await expect(screen.getByRole('button', { name: 'Export preset JSON' })).toBeVisible();
+  // Named presets: save one through the real UI and see it listed.
+  await screen.getByPlaceholder(/preset name/).fill('e2e-preset');
+  await screen.getByRole('button', { name: 'Save current as preset' }).click();
+  await expect(screen.getByText('e2e-preset', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape'); // resume from debug menu
 
   // --- Quit to menu and back: teardown must not error or leak listeners
