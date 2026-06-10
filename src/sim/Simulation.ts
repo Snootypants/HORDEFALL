@@ -167,7 +167,7 @@ export class Simulation {
       this.credits += credits;
       this.stats.creditsEarned += credits;
       this.bus.emit('currency:changed', { total: this.credits });
-      this.pickups.rollDrop(e.x, e.z, this.rng, BALANCE.economy.dropChance, this.waves.ammoDropMult);
+      this.pickups.rollDrop(e.x, e.z, this.rng, BALANCE.economy.dropChance, this.waves.ammoDropMult, this.resourceNeeds());
     });
     this.bus.on('pickup:collected', () => {
       this.stats.pickupsCollected++;
@@ -292,6 +292,16 @@ export class Simulation {
     this.player.health = Math.max(this.player.health, healthFrac * this.player.maxHealth);
     this.player.armor = Math.max(this.player.armor, armorFrac * this.player.maxArmor);
     this.companions.syncCounts(this.playerStats.droneCount, this.playerStats.turretCount);
+  }
+
+  /** Current resource fullness — drives adaptive drop weighting. */
+  private readonly needsScratch = { healthFrac: 1, armorFrac: 1, ammoFrac: 1 };
+  resourceNeeds(): { healthFrac: number; armorFrac: number; ammoFrac: number } {
+    const n = this.needsScratch;
+    n.healthFrac = this.player.health / this.player.maxHealth;
+    n.armorFrac = this.player.maxArmor > 0 ? this.player.armor / this.player.maxArmor : 1;
+    n.ammoFrac = this.weapons.ammoFraction();
+    return n;
   }
 
   /**

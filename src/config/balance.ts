@@ -48,6 +48,8 @@ export const BALANCE: BalanceConfig = {
     armorPrice: 100,
     healthPrice: 100,
     dropChance: 0.28,
+    adaptiveDropMaxBoost: 3,
+    lowArmorHealthBoost: 0.5,
   },
   waves: {
     baseBudget: 60,

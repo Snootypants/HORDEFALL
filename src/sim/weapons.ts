@@ -80,6 +80,19 @@ export class WeaponSim {
     return this.runtime.get(id)!;
   }
 
+  /** Aggregate ammo fullness across unlocked guns (0..1, adaptive drops). */
+  ammoFraction(): number {
+    let have = 0;
+    let cap = 0;
+    for (const w of this.weapons) {
+      const rt = this.runtime.get(w.id)!;
+      if (!rt.unlocked) continue;
+      have += rt.mag + rt.reserve;
+      cap += w.magSize + w.reserveMax;
+    }
+    return cap > 0 ? Math.min(1, have / cap) : 1;
+  }
+
   /**
    * Arsenal strength for wave-budget scaling: +1 per non-default unlock,
    * +0.5 per purchased tier. The stock loadout scores 0.

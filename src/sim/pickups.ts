@@ -8,6 +8,7 @@ import type { PickupConfig } from '../config/types';
 import type { GameBus } from './events';
 import type { Rng } from '../core/Rng';
 import { dist2XZ } from '../core/math';
+import { effectiveWeights, type ResourceNeeds } from './drops';
 
 const MAX = 192;
 
@@ -41,19 +42,21 @@ export class Pickups {
     return this.configs[this.kindIdx[i]];
   }
 
-  /** Weighted drop roll at a death location. Returns true if spawned. */
-  rollDrop(x: number, z: number, rng: Rng, dropChance: number, ammoDropMult: number): boolean {
+  /**
+   * Weighted drop roll at a death location; weights adapt to the player's
+   * current needs (see drops.ts). Returns true if spawned.
+   */
+  rollDrop(x: number, z: number, rng: Rng, dropChance: number, ammoDropMult: number, needs: ResourceNeeds): boolean {
     if (!rng.chance(dropChance)) return false;
+    const weights = effectiveWeights(this.configs, needs, ammoDropMult);
     let total = 0;
-    for (const c of this.configs) {
-      total += c.kind === 'ammo' ? c.weight * ammoDropMult : c.weight;
-    }
+    for (const w of weights) total += w;
     let roll = rng.next() * total;
     let picked = this.configs[0];
-    for (const c of this.configs) {
-      roll -= c.kind === 'ammo' ? c.weight * ammoDropMult : c.weight;
+    for (let i = 0; i < this.configs.length; i++) {
+      roll -= weights[i];
       if (roll <= 0) {
-        picked = c;
+        picked = this.configs[i];
         break;
       }
     }

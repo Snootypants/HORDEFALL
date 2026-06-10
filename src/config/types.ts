@@ -357,6 +357,10 @@ export interface EconomyConfig {
   armorPrice: number;
   healthPrice: number;
   dropChance: number;
+  /** Adaptive drops: max per-kind weight multiplier when a resource is empty. */
+  adaptiveDropMaxBoost: number;
+  /** Adaptive drops: extra health-weight boost contributed by empty armor. */
+  lowArmorHealthBoost: number;
 }
 
 export interface BalanceConfig {

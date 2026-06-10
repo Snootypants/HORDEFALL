@@ -183,6 +183,10 @@ export function validateConfigSet(set: ConfigSet): ValidationReport {
   if (b.waves.minSpawnDistance >= b.waves.maxSpawnDistance) {
     errors.push('balance.waves: minSpawnDistance must be < maxSpawnDistance');
   }
+  if (b.economy.adaptiveDropMaxBoost < 1) {
+    errors.push('balance.economy: adaptiveDropMaxBoost must be >= 1');
+  }
+  nonNegative(errors, 'balance.economy', 'lowArmorHealthBoost', b.economy.lowArmorHealthBoost);
   positive(errors, 'balance.waves', 'paceTargetSecPerWave', b.waves.paceTargetSecPerWave);
   nonNegative(errors, 'balance.waves', 'weaponPowerBudgetFactor', b.waves.weaponPowerBudgetFactor);
   positive(errors, 'balance.waves', 'paceBudgetMin', b.waves.paceBudgetMin);
