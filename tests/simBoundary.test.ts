@@ -48,6 +48,14 @@ describe('findBoundaryViolations (checker behavior)', () => {
     expect(findBoundaryViolations(`const el: HTMLCanvasElement = x;`)).toHaveLength(1);
   });
 
+  it('flags browser input/network APIs', () => {
+    expect(findBoundaryViolations(`function onKey(e: KeyboardEvent) {}`)).toHaveLength(1);
+    expect(findBoundaryViolations(`function onMove(e: MouseEvent) {}`)).toHaveLength(1);
+    expect(findBoundaryViolations(`function onPoint(e: PointerEvent) {}`)).toHaveLength(1);
+    expect(findBoundaryViolations(`await fetch('/balance.json');`)).toHaveLength(1);
+    expect(findBoundaryViolations(`const xhr = new XMLHttpRequest();`)).toHaveLength(1);
+  });
+
   it('allows config/core/sim-internal imports and guarded performance use', () => {
     const ok = `
       import { BALANCE } from '../config/balance';

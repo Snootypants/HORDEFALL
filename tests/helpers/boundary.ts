@@ -19,6 +19,9 @@ const FORBIDDEN_GLOBALS = [
   /\bHTML\w*Element\b/,
   /\bCanvasRenderingContext2D\b/,
   /\bAudioContext\b/,
+  /\bfetch\s*\(/,
+  /\bXMLHttpRequest\b/,
+  /\b(?:Keyboard|Mouse|Pointer|Wheel|Touch)Event\b/,
 ];
 
 function stripComments(source: string): string {

@@ -260,3 +260,237 @@ Explain how to stress test the game.
 Final deliverable:
 
 A complete working codebase for a browser-based Three.js TypeScript FPS horde survival game with serious architecture, real gameplay, performance-conscious systems, data-driven content, save/load, upgrades, enemies, waves, UI, debug tools, and documentation.
+
+
+
+-------------------
+
+I need a tuning console... need to be able to control the following
+- bullet dmg
+- enemy hp (for all enemy types)
+- enemy move speed (for each enemy)
+- how much dmg each enemy does when they touch you
+- enable all guns and upgrades. (Check boxes for these)
+- be able to tune the drop rate of stuff
+-- drop rate should be affected by how much of that thing is missing... low ammo should increase amo drop.. low hp should increase armor drop and a small increase in hp drop chance. 
+- 
+
+- there needs to be a mele weapon.. hit 0 to equip it.. it auto equips when u run out of all ammo
+- I dont think enemies collide with any of the stuff in the field
+- the hit box of the 1st enemies is not all the visible shape.. its thinner than the full bad guy.. also.. does not include the head
+- 
+=======
+
+
+
+
+2026-06-10 10:06
+
+Yeah. Don’t just benchmark “can it build a game.” It already did that. Now benchmark whether it can handle ugly, real engineering pressure.
+
+The best tests are follow-up refactors, debugging, audits, and constraint changes.
+
+First test: headless simulation extraction.
+
+Prompt:
+
+Refactor HORDEFALL so the entire gameplay simulation can run headlessly without Three.js, DOM APIs, browser input APIs, or rendering code.
+Requirements:
+- The simulation must run in Node/Vitest.
+- Rendering must subscribe to simulation state instead of owning gameplay state.
+- Input must become command objects.
+- Weapons, enemies, waves, upgrades, damage, pickups, status effects, and save/load must work without the renderer.
+- Add tests proving a 10-wave run can execute headlessly.
+- Add tests proving the same seed + same input commands produces the same final state.
+- Do not remove existing browser gameplay.
+- Do not fake this with mocks that bypass real gameplay logic.
+
+That is a nasty benchmark because it exposes whether the architecture is actually separated or just looks separated.
+
+Second test: deterministic replay system.
+
+Add deterministic replay support.
+Requirements:
+- Record player input commands per simulation tick.
+- Record seed, version, config hashes, and initial run state.
+- Replay the run headlessly and verify final checksum.
+- Add a replay viewer in the browser with pause, resume, step-forward, fast-forward, and free camera.
+- Add tests for replay determinism.
+- If determinism is impossible somewhere, identify the exact nondeterministic system and fix it.
+
+This is a real frontier-level test. Most models will claim “deterministic” while still using Math.random, frame delta, object iteration order, real time, or floating-point chaos everywhere.
+
+Third test: performance proof instead of performance claims.
+
+Add a benchmark harness that proves the game can simulate 100, 250, 500, 750, and 1000 enemies.
+Requirements:
+- Run benchmarks headlessly and in-browser.
+- Measure simulation frame time, render frame time, AI time, collision time, projectile time, and memory growth.
+- Add a benchmark report output as JSON and Markdown.
+- Add regression thresholds.
+- Add a command: npm run benchmark
+- Add a CI-safe benchmark mode with lower thresholds.
+- Include a generated report explaining bottlenecks and what systems dominate cost.
+
+This separates “it says 1000 enemies” from “it actually knows what happens at 1000 enemies.”
+
+Fourth test: multiplayer architecture conversion.
+
+Convert the game architecture toward future authoritative multiplayer.
+Requirements:
+- Split client prediction, authoritative simulation, and render interpolation concepts.
+- Add a server-simulation package that can run in Node.
+- Add input sequence numbers.
+- Add snapshot generation.
+- Add snapshot interpolation.
+- Add reconciliation hooks.
+- Do not implement full networking unless necessary.
+- Add a local fake-latency mode that simulates 50ms, 100ms, 200ms, and packet loss.
+- Document exactly what remains before real multiplayer can ship.
+
+This is probably the best “is it actually a serious model?” test. Multiplayer retrofits are where fake architecture dies.
+
+Fifth test: save migration hell.
+
+Create save versions v1 through v5 and migration tests.
+Requirements:
+- Add realistic old save examples for every version.
+- Migrate v1→v2→v3→v4→v5.
+- Support corrupt save recovery.
+- Support missing fields, renamed upgrades, removed weapons, changed enemy IDs, changed map IDs, and changed balance configs.
+- Add snapshot tests for migrated saves.
+- Add a user-facing save repair screen.
+- Add import/export validation with detailed errors.
+
+This tests boring enterprise-quality engineering. Models hate this stuff because it is tedious and precise.
+
+Sixth test: mod support.
+
+Add mod support for weapons, enemies, upgrades, wave events, maps, and difficulty presets.
+Requirements:
+- Mods are JSON packs.
+- Add schema validation.
+- Add dependency/version checks.
+- Add conflict detection.
+- Add load order.
+- Add enable/disable UI.
+- Add safe error reporting so one bad mod does not crash the game.
+- Add sample mod pack with a new weapon, enemy, upgrade, and wave event.
+- Add tests for invalid mods, conflicting IDs, missing dependencies, and version mismatch.
+
+This is a great benchmark because data-driven claims become real or collapse.
+
+Seventh test: large feature without wrecking architecture.
+
+Add a full objective system on top of the existing horde survival loop.
+Requirements:
+- Add objective types: hold zone, escort drone, repair generator, retrieve item, destroy nest, survive timer, boss interrupt.
+- Objectives must compose with wave modifiers.
+- Objectives must be data-driven.
+- Add HUD objective tracking.
+- Add objective rewards.
+- Add failure states.
+- Add tests.
+- Do not hardcode objective logic into the wave director.
+
+This tests extensibility. Bad codebases get messy fast here.
+
+Eighth test: enemy AI upgrade.
+
+Replace enemy AI with a behavior-tree system.
+Requirements:
+- Existing enemy behavior must still work.
+- Behavior trees must be data-driven.
+- Add decorators, selectors, sequences, conditions, actions, cooldowns, and blackboard state.
+- Add debug visualization showing current AI node per enemy type.
+- Add tests for boss phase behavior, ranged line-of-sight, support healing, exploder detonation, and shield enemy behavior.
+
+This is brutal because it forces a generic system without breaking gameplay.
+
+Ninth test: accessibility and settings polish.
+
+Add a serious accessibility pass.
+Requirements:
+- Full key rebinding.
+- Controller remapping.
+- Colorblind-safe HUD modes.
+- Reduced motion mode.
+- Camera shake intensity setting.
+- Muzzle flash reduction.
+- Subtitle/event text for important audio cues.
+- UI scale.
+- Font size options.
+- Hold/toggle sprint, crouch, aim.
+- Persist all settings.
+- Add tests for settings migration and keybind conflicts.
+
+This benchmarks product completeness, not just engine cleverness.
+
+Tenth test: audit and repair loop.
+
+Perform a senior engineering audit of this codebase.
+Review:
+- Architecture boundaries
+- Determinism
+- Performance hot paths
+- Memory allocation
+- Test coverage
+- Data validation
+- Save/load robustness
+- Error handling
+- Multiplayer readiness
+- Maintainability
+- God classes
+- Circular dependencies
+- Fake or shallow systems
+Then create an ordered remediation plan and implement the top 10 fixes. Do not rewrite the whole project. Preserve behavior. Add tests proving each fix.
+
+This is the one I’d run after every big build.
+
+My recommended benchmark sequence:
+
+Start with headless simulation extraction. Then deterministic replay. Then benchmark harness. Then multiplayer architecture. Then mod support.
+
+That sequence will tell you whether Fable 5 is just fast as hell, or whether it can actually reason through long-term software architecture.
+
+------
+
+2026-06-10 10:07
+
+No. Don’t run them all in one go.
+
+Run them as separate stages. One big mega-prompt will muddy the results because the model will cut corners, silently skip systems, or produce a giant mess that is hard to judge.
+
+Best order:
+
+1. Headless simulation extraction
+2. Deterministic replay
+3. Benchmark harness
+4. Multiplayer-ready architecture
+5. Mod support
+6. Save migration hell
+7. Behavior-tree AI
+8. Objective system
+9. Accessibility pass
+10. Senior engineering audit + top 10 fixes
+
+The first three are the real test. If it fails those, don’t bother with the rest yet.
+
+I’d run it like this:
+
+We are benchmarking your ability to safely evolve an existing codebase.
+Do only Stage 1.
+Do not implement Stage 2 or later.
+After finishing, run the app, run tests, fix errors, and provide:
+1. what changed
+2. files changed
+3. tests added
+4. tests passing/failing
+5. remaining risks
+6. exact commands to verify
+
+Then paste in the Stage 1 headless simulation extraction prompt.
+
+After it finishes, inspect. Then run Stage 2. Same pattern.
+
+The point is to test whether Fable 5 can preserve architecture across multiple serious follow-up tasks. That is a much better benchmark than seeing whether it can shotgun 10 impressive features in one giant generation.
