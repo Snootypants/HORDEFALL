@@ -59,7 +59,19 @@ export class CoreRenderer {
 
     this.applySettings(settings);
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    window.addEventListener('resize', this.onResize);
+  }
+
+  private readonly onResize = (): void => this.resize();
+
+  /** Full teardown: a new CoreRenderer is built per run on the same canvas. */
+  dispose(): void {
+    window.removeEventListener('resize', this.onResize);
+    this.composer?.dispose();
+    this.composer = null;
+    this.bloomPass = null;
+    this.screenFxPass = null;
+    this.renderer.dispose();
   }
 
   applyMapTheme(map: MapConfig): void {

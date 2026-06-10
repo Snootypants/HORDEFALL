@@ -18,6 +18,7 @@ import { CameraRig } from './CameraRig';
 import { ViewModel } from './ViewModel';
 import { ProjectileRenderer, PickupRenderer, CompanionRenderer } from './EntityRenderers';
 import { DebugDraw } from './DebugDraw';
+import { deepDisposeScene } from './disposeUtils';
 import { clamp, dist2XZ } from '../core/math';
 
 export interface RenderFrame {
@@ -187,6 +188,9 @@ export class GameRenderer {
 
   dispose(): void {
     for (const unsub of this.unsubscribers) unsub();
+    this.unsubscribers.length = 0;
     this.world.dispose(this.core.scene);
+    deepDisposeScene(this.core.scene); // all subsystem GPU resources
+    this.core.dispose();
   }
 }

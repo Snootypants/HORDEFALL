@@ -154,9 +154,7 @@ export class Game implements GameApi {
     this.damageNumbers.unwire();
     this.achievements.unwire();
     if (this.renderer) {
-      this.renderer.dispose();
-      this.renderer.core.scene.clear();
-      this.renderer.core.renderer.dispose();
+      this.renderer.dispose(); // unsubscribes, frees GPU resources, removes listeners
       this.renderer = null;
     }
     this.sim = null;
