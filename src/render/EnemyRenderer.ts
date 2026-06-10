@@ -15,7 +15,8 @@ const dummy = new THREE.Object3D();
 const colorScratch = new THREE.Color();
 const baseColorScratch = new THREE.Color();
 
-function geometryFor(shape: EnemyShape): THREE.BufferGeometry {
+/** Exported so tests can prove these dims match config/shapes SHAPE_DIMS. */
+export function geometryFor(shape: EnemyShape): THREE.BufferGeometry {
   switch (shape) {
     case 'capsule':
       return new THREE.CapsuleGeometry(0.45, 0.9, 4, 10);

@@ -142,6 +142,7 @@ export class Simulation {
       damagePlayer,
       slowAuraActive: false,
       aiThrottle: true,
+      barrels: this.barrels,
     };
 
     this.enemies.setMinionSpawner((enemyId, x, z, wave) => {

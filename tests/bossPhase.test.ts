@@ -11,6 +11,7 @@ import { EnemyManager } from '../src/sim/enemies/EnemyManager';
 import { updateEnemies, type EnemyUpdateCtx } from '../src/sim/enemies/enemyAI';
 import { scaleBoss } from '../src/sim/enemies/scaling';
 import { BALANCE } from '../src/config/balance';
+import { Barrels } from '../src/sim/barrels';
 import type { GameEvents } from '../src/sim/events';
 import type { CollisionWorld } from '../src/sim/collision';
 
@@ -36,6 +37,7 @@ function makeCtx(bus: EventBus<GameEvents>): EnemyUpdateCtx {
     damagePlayer: () => {},
     slowAuraActive: false,
     aiThrottle: false,
+    barrels: new Barrels([]),
   };
 }
 

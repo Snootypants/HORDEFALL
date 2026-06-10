@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import type { Simulation } from '../sim/Simulation';
 import { EState } from '../sim/enemies/EnemyManager';
+import { hitVolumeOf } from '../sim/enemies/enemyQueries';
 
 const STATE_COLORS: Record<number, number> = {
   [EState.Spawning]: 0xffffff,
@@ -33,8 +34,10 @@ export class DebugDraw {
   constructor(scene: THREE.Scene, sim: Simulation) {
     this.sim = sim;
 
+    // Unit capsule-ish cylinder, scaled per-instance to the REAL hit volume
+    // (hitVolumeOf — the same numbers the raycast tests against).
     this.hitboxMesh = new THREE.InstancedMesh(
-      new THREE.SphereGeometry(1, 8, 6),
+      new THREE.CylinderGeometry(1, 1, 1, 10, 1),
       new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true, transparent: true, opacity: 0.5 }),
       1024,
     );
@@ -82,11 +85,11 @@ export class DebugDraw {
         if (!mgr.aliveFlags[i] || mgr.state[i] === EState.Dying) continue;
         const cfg = mgr.configOf(i);
         const h = cfg.height * mgr.scale[i];
-        const r = Math.max(cfg.radius * mgr.scale[i], h * 0.45);
 
         if (this.showHitboxes) {
-          dummy.position.set(mgr.posX[i], mgr.posY[i] + h * 0.5, mgr.posZ[i]);
-          dummy.scale.setScalar(r);
+          const vol = hitVolumeOf(mgr, i);
+          dummy.position.set(mgr.posX[i], (vol.yBottom + vol.yTop) / 2, mgr.posZ[i]);
+          dummy.scale.set(vol.radius, vol.yTop - vol.yBottom, vol.radius);
           dummy.updateMatrix();
           this.hitboxMesh.setMatrixAt(hit++, dummy.matrix);
         }

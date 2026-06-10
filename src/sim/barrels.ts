@@ -11,6 +11,8 @@ import { clamp, dist2XZ, raySphere } from '../core/math';
 const BARREL_HP = 30;
 const RADIUS = 4.2;
 const DAMAGE = 70;
+/** Physical body radius — blocks enemies and matches the rendered cylinder. */
+export const BARREL_RADIUS = 0.5;
 
 export class Barrels {
   readonly x: Float32Array;

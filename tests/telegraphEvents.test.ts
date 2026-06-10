@@ -9,6 +9,7 @@ import { Rng } from '../src/core/Rng';
 import { ENEMIES, enemyById } from '../src/config/enemies';
 import { EnemyManager } from '../src/sim/enemies/EnemyManager';
 import { updateEnemies, type EnemyUpdateCtx } from '../src/sim/enemies/enemyAI';
+import { Barrels } from '../src/sim/barrels';
 import type { GameEvents } from '../src/sim/events';
 import type { CollisionWorld } from '../src/sim/collision';
 import type { EnemyConfig } from '../src/config/types';
@@ -44,6 +45,7 @@ describe('enemy telegraph events', () => {
       damagePlayer: () => {},
       slowAuraActive: false,
       aiThrottle: false,
+      barrels: new Barrels([]),
     };
   });
 

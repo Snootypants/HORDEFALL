@@ -10,6 +10,7 @@ import type { CollisionWorld } from '../collision';
 import type { GameBus } from '../events';
 import type { Rng } from '../../core/Rng';
 import type { EnemyProjectiles } from './enemyProjectiles';
+import { Barrels, BARREL_RADIUS } from '../barrels';
 import { EnemyManager, EState } from './EnemyManager';
 import { thinkBoss } from './bossAI';
 import { clamp, damp, dist2XZ, wrapAngle } from '../../core/math';
@@ -30,6 +31,8 @@ export interface EnemyUpdateCtx {
   slowAuraActive: boolean;
   /** AI LOD: disable to force frequent thinking (debug). */
   aiThrottle: boolean;
+  /** Sim props that block enemy movement (live barrels). */
+  barrels: Barrels;
 }
 
 const neighborScratch: number[] = [];
@@ -122,6 +125,7 @@ export function updateEnemies(mgr: EnemyManager, ctx: EnemyUpdateCtx): void {
       posScratch.x = mgr.posX[i];
       posScratch.z = mgr.posZ[i];
       ctx.collision.pushOutCircle(posScratch, cfg.radius * mgr.scale[i], 0.1, cfg.height * mgr.scale[i]);
+      pushOutOfBarrels(posScratch, cfg.radius * mgr.scale[i], ctx.barrels);
       mgr.posX[i] = posScratch.x;
       mgr.posZ[i] = posScratch.z;
     }
@@ -138,6 +142,21 @@ export function updateEnemies(mgr: EnemyManager, ctx: EnemyUpdateCtx): void {
     }
 
     mgr.grid.update(i, mgr.posX[i], mgr.posZ[i]);
+  }
+}
+
+/** Live barrels are solid props: circle-circle pushout (rosters are tiny). */
+function pushOutOfBarrels(pos: { x: number; z: number }, radius: number, barrels: Barrels): void {
+  const minDist = radius + BARREL_RADIUS;
+  for (let b = 0; b < barrels.count; b++) {
+    if (!barrels.alive[b]) continue;
+    const ox = pos.x - barrels.x[b];
+    const oz = pos.z - barrels.z[b];
+    const d2 = ox * ox + oz * oz;
+    if (d2 >= minDist * minDist || d2 < 1e-9) continue;
+    const d = Math.sqrt(d2);
+    pos.x = barrels.x[b] + (ox / d) * minDist;
+    pos.z = barrels.z[b] + (oz / d) * minDist;
   }
 }
 

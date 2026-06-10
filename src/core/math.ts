@@ -169,3 +169,47 @@ export const aabbContains = (
   maxX: number, maxY: number, maxZ: number,
 ): boolean =>
   px >= minX && px <= maxX && py >= minY && py <= maxY && pz >= minZ && pz <= maxZ;
+
+/**
+ * Ray vs vertical capsule (sphere-swept segment from (cx,yBottom+r,cz) to
+ * (cx,yTop-r,cz)). Returns entry distance in units of |d|, or null. Degrades
+ * to a sphere when the capsule is shorter than 2r.
+ */
+export const rayVerticalCapsule = (
+  ox: number, oy: number, oz: number,
+  dx: number, dy: number, dz: number,
+  cx: number, cz: number,
+  yBottom: number, yTop: number,
+  radius: number,
+): number | null => {
+  const a0 = Math.min(yBottom + radius, (yBottom + yTop) / 2);
+  const a1 = Math.max(yTop - radius, (yBottom + yTop) / 2);
+
+  // Infinite cylinder test on XZ.
+  const lx = ox - cx;
+  const lz = oz - cz;
+  const a = dx * dx + dz * dz;
+  let best: number | null = null;
+  if (a > 1e-12) {
+    const b = 2 * (lx * dx + lz * dz);
+    const c = lx * lx + lz * lz - radius * radius;
+    const disc = b * b - 4 * a * c;
+    if (disc >= 0) {
+      const sq = Math.sqrt(disc);
+      for (const t of [(-b - sq) / (2 * a), (-b + sq) / (2 * a)]) {
+        if (t < 0) continue;
+        const y = oy + dy * t;
+        if (y >= a0 && y <= a1) {
+          best = best === null ? t : Math.min(best, t);
+          break; // entry point found (sorted roots)
+        }
+      }
+    }
+  }
+  // Cap spheres.
+  for (const cy of [a0, a1]) {
+    const t = raySphere(ox, oy, oz, dx, dy, dz, cx, cy, cz, radius);
+    if (t !== null && (best === null || t < best)) best = t;
+  }
+  return best;
+};
