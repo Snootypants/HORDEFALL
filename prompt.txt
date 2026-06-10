@@ -1,0 +1,262 @@
+Build a complete AAA-style browser-based FPS horde survival game using Three.js, TypeScript, and modern web tooling.
+
+This is not a prototype. Treat this as a serious frontier-model benchmark. The goal is to test architecture, performance, gameplay systems, code quality, debugging ability, and long-term maintainability.
+
+Core requirement:
+
+Create a fully playable 3D first-person horde survival game that runs in the browser with mouse/keyboard controls, optional gamepad support, and responsive UI. The game should feel like a polished vertical slice of a larger commercial project.
+
+Technical stack:
+
+Use Three.js.
+Use TypeScript.
+Use Vite or another modern build tool.
+Use modular architecture.
+Use clean separation between engine systems, game systems, rendering, UI, input, audio, data, and persistence.
+Use no paid assets.
+Generate placeholder assets procedurally or with simple geometry/materials.
+Do not rely on external game engines.
+Do not build this as one giant file.
+
+Performance requirements:
+
+The game must support at least 500 active enemies in a stress-test mode.
+Target 60 FPS on mid-range hardware.
+Use object pooling for bullets, enemies, particles, pickups, decals, floating damage numbers, and temporary effects.
+Use instanced rendering for repeated enemy meshes, projectiles, pickups, vegetation, props, or other repeated objects where useful.
+Use spatial partitioning, grid partitioning, BVH, or another optimization system for enemy queries, projectile checks, AI awareness, and collision lookups.
+Avoid per-frame garbage creation in hot paths.
+Add a built-in performance overlay showing FPS, frame time, draw calls if available, active enemies, active projectiles, pooled objects, memory estimate if available, and AI update cost.
+Add a stress-test menu that lets me spawn 100, 250, 500, 750, and 1000 enemies.
+
+Gameplay:
+
+Create a first-person player controller with walking, sprinting, strafing, jumping, crouching, mouse look, weapon recoil, weapon sway, head bob, camera shake, and hit feedback.
+Add health, armor, stamina, ammo, reloads, damage, healing, death, respawn, and game-over flow.
+Add at least 6 weapons:
+
+1. Pistol
+2. Shotgun
+3. Assault rifle
+4. Sniper rifle
+5. Grenade launcher
+6. Experimental energy weapon
+
+Each weapon needs different damage, fire rate, spread, recoil, reload time, ammo capacity, projectile or hitscan behavior, visual effect, sound hook, upgrade path, and balance profile.
+
+Enemies:
+
+Add at least 7 enemy types:
+
+1. Basic rusher
+2. Fast crawler
+3. Tank
+4. Ranged spitter/shooter
+5. Exploder
+6. Shield enemy
+7. Support enemy that buffs or heals others
+
+Enemies must have different movement speeds, health, attack styles, targeting logic, animation states or animation placeholders, hit reactions, death effects, and scoring values.
+
+AI requirements:
+
+Implement enemy AI using a clean state machine or behavior tree system.
+Enemies should path toward the player while avoiding obvious clumping.
+Add simple local avoidance or steering.
+Add line-of-sight checks for ranged enemies.
+Add attack cooldowns.
+Add aggro rules.
+Add enemy difficulty scaling.
+Add boss-wave behavior every 5 waves.
+Add at least one boss enemy with phases, weak points, and special attacks.
+
+Wave system:
+
+Create procedural wave generation.
+Each wave should scale based on time survived, player level, weapon upgrades, and prior wave performance.
+Add spawn directors that choose spawn points around the map.
+Prevent enemies from spawning directly in front of the player or too close to the player.
+Add wave events such as fog wave, elite wave, ammo-scarce wave, boss wave, and swarm wave.
+Add break periods between waves with upgrade/shop access.
+
+Progression:
+
+Add XP, levels, score, combo multiplier, kill streaks, currency, weapon upgrades, player perks, passive upgrades, and unlocks.
+Add a roguelite-style upgrade selection screen after leveling.
+Add at least 20 upgrade options.
+Examples: reload speed, fire rate, max health, armor regen, explosive rounds, piercing shots, ricochet, lifesteal, movement speed, crit chance, elemental damage, larger magazine, faster sprint recovery, drone companion, turret drop, ammo magnet, money bonus, enemy slow, shield burst, and double-shot.
+
+Map:
+
+Create a playable arena map with procedural or modular geometry.
+Include obstacles, cover, verticality, ramps, chokepoints, open areas, pickups, spawn zones, safe-ish zones, and danger zones.
+Add collision against the world.
+Add environmental props.
+Add at least 3 map variants or a procedural layout seed system.
+Add a minimap or radar.
+
+Rendering:
+
+Use dynamic lighting.
+Use shadows where reasonable.
+Use muzzle flashes.
+Use projectile trails.
+Use impact decals or impact markers.
+Use particles for blood, sparks, explosions, smoke, dust, pickups, shield hits, and enemy deaths.
+Use post-processing if practical: bloom, vignette, damage flash, chromatic aberration or subtle screen distortion.
+Add graphics settings: low, medium, high, ultra.
+The graphics menu should toggle shadows, particles, post-processing, render scale, texture/detail level, and max ragdolls/decals/effects.
+
+Audio:
+
+Add an audio manager with separate volume controls for master, music, SFX, UI, weapons, enemies, and ambient sound.
+Use generated/simple placeholder sounds if needed.
+Add hooks for weapon fire, reload, enemy attacks, enemy deaths, player damage, UI clicks, pickups, explosions, level-up, wave start, and boss arrival.
+Audio should be centralized and not scattered randomly through gameplay code.
+
+UI/UX:
+
+Add main menu.
+Add pause menu.
+Add settings menu.
+Add controls menu.
+Add graphics menu.
+Add audio menu.
+Add key rebinding.
+Add HUD with health, armor, stamina, ammo, reload indicator, wave, score, XP, level, minimap/radar, active perks, damage indicators, and boss health bar.
+Add upgrade/shop screen between waves.
+Add game-over screen with stats.
+Add run summary screen showing kills, damage dealt, damage taken, favorite weapon, accuracy, headshots, waves survived, time survived, upgrades chosen, and score.
+Add loading screen or boot screen.
+Add developer/debug menu.
+
+Data-driven design:
+
+Weapons, enemies, waves, upgrades, pickups, balance values, and map settings must be data-driven through JSON or TypeScript config files.
+The game should be easy to balance without digging through core engine code.
+Add schema validation or runtime validation for config data.
+Add clear examples of how to add a new weapon, enemy, upgrade, or wave modifier.
+
+Save/load:
+
+Add local save support.
+Save settings, keybinds, unlocked upgrades, high scores, best wave, player profile, and run history.
+Support save versioning.
+Implement migration from save version 1 to save version 2.
+Handle corrupted saves gracefully.
+Add import/export save as JSON.
+
+Architecture:
+
+Design the project as if five developers will maintain it for two years.
+Use clear folders.
+Use dependency boundaries.
+Use interfaces where appropriate.
+Avoid circular dependencies.
+Avoid massive God classes.
+Add an event bus or message system for decoupled communication.
+Add deterministic-ish simulation hooks where practical.
+Add a command/debug console or developer command system.
+Add structured logging with log levels.
+Add profiling helpers.
+
+Advanced systems:
+
+Add a basic ECS or ECS-like architecture for high-volume game entities.
+Add object pools.
+Add AI tick throttling so distant enemies update less often.
+Add LOD behavior for enemies and effects.
+Add damage numbers that pool/recycle.
+Add pickups with magnet behavior.
+Add status effects: burning, freezing, poison, shock, slow, stun, bleed.
+Add elemental interactions if possible.
+Add destructible props or explosive barrels.
+Add deployable turret or drone companion.
+Add achievements.
+Add daily challenge seed support.
+Add replay or run seed capture if feasible.
+
+Testing:
+
+Add automated tests for core math utilities, wave generation, save migration, upgrade application, damage calculation, weapon config validation, and enemy scaling.
+Add a test command.
+Add a smoke-test mode that runs basic game initialization without manual play.
+Add comments explaining how to run tests.
+
+Developer tools:
+
+Add debug overlay.
+Add enemy spawn controls.
+Add weapon switching/debug unlock all.
+Add god mode.
+Add noclip if reasonable.
+Add hitbox/collision visualization.
+Add AI state visualization.
+Add path/steering visualization.
+Add wave skip.
+Add force boss wave.
+Add performance stress test.
+Add config validation report at startup.
+
+Documentation:
+
+Create a README with:
+
+1. Project overview
+2. Setup instructions
+3. Run instructions
+4. Build instructions
+5. Test instructions
+6. Architecture overview
+7. Folder structure
+8. Gameplay controls
+9. Data-driven config explanation
+10. How to add a new weapon
+11. How to add a new enemy
+12. How to add a new upgrade
+13. Performance strategy
+14. Known limitations
+15. Future multiplayer architecture plan
+
+Multiplayer-ready architecture:
+
+Do not implement full multiplayer unless time allows, but architect the simulation so future authoritative server multiplayer is possible.
+Separate input collection from simulation.
+Separate rendering from game state.
+Avoid tying all logic directly to Three.js objects.
+Document what would need to change to add multiplayer.
+
+Quality bar:
+
+The game must run.
+The code must compile.
+The controls must work.
+The player must be able to start a run, fight waves, level up, choose upgrades, survive, die, and see a game-over summary.
+Do not fake systems with empty placeholders unless clearly marked.
+Do not claim something is implemented if it is not.
+If scope must be reduced, prioritize:
+
+1. Running playable game
+2. Clean architecture
+3. Performance systems
+4. Horde AI
+5. Upgrade/wave loop
+6. Developer tools
+7. Polish
+
+After implementation:
+
+Run the project.
+Fix compile errors.
+Fix runtime errors.
+Perform at least one self-review.
+List what was completed.
+List what was cut.
+List known bugs.
+List next steps.
+Explain the architecture briefly.
+Explain how to stress test the game.
+
+Final deliverable:
+
+A complete working codebase for a browser-based Three.js TypeScript FPS horde survival game with serious architecture, real gameplay, performance-conscious systems, data-driven content, save/load, upgrades, enemies, waves, UI, debug tools, and documentation.
