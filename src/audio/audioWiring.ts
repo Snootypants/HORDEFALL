@@ -27,6 +27,8 @@ export function wireAudio(bus: GameBus, audio: AudioManager): () => void {
   subs.push(bus.on('enemy:died', () => audio.play('enemy-die', 0.9, 70)));
   subs.push(bus.on('enemy:attack', () => audio.play('enemy-attack', 0.8, 90)));
   subs.push(bus.on('enemy:shield-break', () => audio.play('shield-break')));
+  subs.push(bus.on('enemy:shield-deflect', () => audio.play('shield-deflect', 0.7, 90)));
+  subs.push(bus.on('enemy:fuse', () => audio.play('fuse-warning', 0.9, 120)));
   subs.push(bus.on('status:reaction', () => audio.play('status-reaction')));
 
   subs.push(bus.on('player:damaged', () => audio.play('player-hurt', 1, 150)));

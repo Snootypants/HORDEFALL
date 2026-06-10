@@ -70,7 +70,7 @@ export type SoundName =
   | 'pistol-fire' | 'shotgun-fire' | 'rifle-fire' | 'sniper-fire' | 'launcher-fire' | 'arc-fire'
   | 'reload-light' | 'reload-shell' | 'reload-mag' | 'reload-bolt' | 'reload-heavy' | 'reload-cell'
   | 'weapon-empty' | 'weapon-switch'
-  | 'enemy-hit' | 'enemy-die' | 'enemy-attack' | 'shield-break' | 'spit'
+  | 'enemy-hit' | 'enemy-die' | 'enemy-attack' | 'shield-break' | 'shield-deflect' | 'fuse-warning' | 'spit'
   | 'player-hurt' | 'player-die' | 'heartbeat'
   | 'explosion' | 'pickup' | 'levelup' | 'wave-start' | 'wave-clear' | 'boss-arrival'
   | 'ui-click' | 'ui-hover' | 'purchase' | 'achievement' | 'status-reaction';
@@ -95,6 +95,8 @@ export const SOUND_RECIPES: Record<SoundName, SoundRecipe> = {
   'enemy-die': { bus: 'enemies', build: (c, o, v) => { sweep(c, o, v * 0.4, 'sawtooth', 300, 60, 0.3); noiseBurst(c, o, v * 0.3, 0.25, 400, 1); } },
   'enemy-attack': { bus: 'enemies', build: (c, o, v) => sweep(c, o, v * 0.4, 'sawtooth', 180, 90, 0.18) },
   'shield-break': { bus: 'enemies', build: (c, o, v) => { noiseBurst(c, o, v * 0.6, 0.3, 2800, 2); sweep(c, o, v * 0.3, 'triangle', 1800, 400, 0.25); } },
+  'shield-deflect': { bus: 'enemies', build: (c, o, v) => { noiseBurst(c, o, v * 0.35, 0.05, 3600, 6, 0.001); sweep(c, o, v * 0.2, 'triangle', 2400, 1600, 0.06); } },
+  'fuse-warning': { bus: 'enemies', build: (c, o, v) => { sweep(c, o, v * 0.5, 'square', 900, 1400, 0.1); sweep(c, o, v * 0.35, 'square', 1400, 2100, 0.12); } },
   spit: { bus: 'enemies', build: (c, o, v) => sweep(c, o, v * 0.35, 'triangle', 700, 250, 0.15) },
 
   'player-hurt': { bus: 'sfx', build: (c, o, v) => { thump(c, o, v * 0.5, 180, 0.2); noiseBurst(c, o, v * 0.3, 0.12, 350, 1); } },

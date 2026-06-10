@@ -26,6 +26,10 @@ export interface GameEvents {
   'enemy:died': { idx: number; enemyId: string; x: number; y: number; z: number; xp: number; score: number; currency: number; isBoss: boolean; killedByPlayer: boolean };
   'enemy:attack': { enemyId: string; x: number; z: number };
   'enemy:shield-break': { idx: number; x: number; y: number; z: number };
+  /** Telegraphs: exploder fuse lit, shield soaked a hit, support aura tick. */
+  'enemy:fuse': { idx: number; x: number; z: number; fuse: number };
+  'enemy:shield-deflect': { idx: number; x: number; y: number; z: number };
+  'enemy:aura-pulse': { x: number; z: number; radius: number };
   'status:reaction': { result: string; x: number; y: number; z: number; bonusDamage: number };
 
   // Boss

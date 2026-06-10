@@ -19,6 +19,7 @@ import { ViewModel } from './ViewModel';
 import { ProjectileRenderer, PickupRenderer, CompanionRenderer } from './EntityRenderers';
 import { DebugDraw } from './DebugDraw';
 import { deepDisposeScene } from './disposeUtils';
+import { weaponById } from '../config/weapons';
 import { clamp, dist2XZ } from '../core/math';
 
 export interface RenderFrame {
@@ -100,6 +101,16 @@ export class GameRenderer {
     u.push(bus.on('enemy:shield-break', (e) => {
       this.particles.burst(e.x, e.y, e.z, 0x66ccff, 16, 4, 0.6, 4);
     }));
+    u.push(bus.on('enemy:shield-deflect', (e) => {
+      this.particles.burst(e.x, e.y, e.z, 0x9fe8ff, 4, 5, 0.25, 10);
+    }));
+    u.push(bus.on('enemy:fuse', (e) => {
+      this.particles.burst(e.x, 0.8, e.z, 0xff5a1f, 10, 2.5, 0.5, 2, 1.4);
+    }));
+    u.push(bus.on('enemy:aura-pulse', (e) => {
+      // Flat green ring: a hint of the heal radius without filling the screen.
+      this.particles.burst(e.x, 0.4, e.z, 0x49e88a, 5, e.radius * 0.55, 0.5, 0.5, 2.2);
+    }));
     u.push(bus.on('status:reaction', (e) => {
       this.particles.burst(e.x, e.y, e.z, 0xcfe8ff, 18, 5, 0.6, 5);
     }));
@@ -116,7 +127,11 @@ export class GameRenderer {
       this.cameraRig.addTrauma(clamp(0.55 - Math.sqrt(d2) / 40, 0, 0.55));
       this.aberrationPulse = Math.min(1.5, this.aberrationPulse + 0.7);
     }));
-    u.push(bus.on('weapon:fired', () => this.viewModel.onFired()));
+    u.push(bus.on('weapon:fired', (e) => {
+      this.viewModel.onFired();
+      const trauma = weaponById(e.weaponId)?.fireTrauma ?? 0;
+      if (trauma > 0) this.cameraRig.addTrauma(trauma);
+    }));
     u.push(bus.on('weapon:recoil', (e) => this.cameraRig.addRecoil(e.pitchDeg, e.yawDeg)));
     u.push(bus.on('weapon:reload-start', (e) => this.viewModel.onReload(e.duration)));
     u.push(bus.on('weapon:switched', () => this.viewModel.setWeapon(this.sim.weapons.current)));
@@ -124,7 +139,18 @@ export class GameRenderer {
       this.damageFlash = Math.min(1, this.damageFlash + clamp(e.amount / 50, 0.15, 0.6));
       this.cameraRig.addTrauma(clamp(e.amount / 70, 0.12, 0.5));
     }));
-    u.push(bus.on('boss:attack', () => this.cameraRig.addTrauma(0.25)));
+    u.push(bus.on('boss:attack', (e) => {
+      this.cameraRig.addTrauma(0.25);
+      // Ground telegraphs at the boss: red ring for slam (fires at windup
+      // start, ~0.9s before impact), dust for charge, arcana for summon.
+      const b = this.sim.enemies.bossIdx;
+      if (b < 0) return;
+      const bx = this.sim.enemies.posX[b];
+      const bz = this.sim.enemies.posZ[b];
+      if (e.attack === 'slam') this.particles.burst(bx, 0.3, bz, 0xff3344, 26, 9, 0.55, 0.4, 2.4);
+      else if (e.attack === 'charge') this.particles.burst(bx, 0.5, bz, 0xffaa55, 14, 5, 0.5, 2, 1.8);
+      else if (e.attack === 'summon') this.particles.burst(bx, 1.2, bz, 0xb455ff, 18, 4, 0.7, 3);
+    }));
     u.push(bus.on('boss:spawned', () => this.cameraRig.addTrauma(0.6)));
     u.push(bus.on('pickup:collected', (e) => {
       this.particles.burst(this.sim.player.x, this.sim.player.y + 1, this.sim.player.z, 0xb8ff5e, 6, 2, 0.4, 3);

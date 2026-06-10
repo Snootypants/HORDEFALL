@@ -110,10 +110,13 @@ export function createShopScreen(api: GameApi): Screen {
     if (!sim) return;
     creditsLine.textContent = `◈ ${sim.credits} credits`;
     const eco = BALANCE.economy;
+    const p = sim.player;
     grid.replaceChildren(
       shopBtn(api, render, 'ammo', `Refill ${sim.weapons.current.name} reserve`, eco.ammoPrice),
-      shopBtn(api, render, 'health', '+50 health', eco.healthPrice),
-      shopBtn(api, render, 'armor', '+50 armor', eco.armorPrice),
+      shopBtn(api, render, 'health', '+50 health', eco.healthPrice,
+        p.health >= p.maxHealth ? 'integrity full' : undefined),
+      shopBtn(api, render, 'armor', '+50 armor', eco.armorPrice,
+        p.armor >= p.maxArmor ? 'armor full' : undefined),
       ...WEAPONS.flatMap((w) => {
         const rt = sim.weapons.runtime.get(w.id)!;
         if (!rt.unlocked) {
@@ -121,9 +124,9 @@ export function createShopScreen(api: GameApi): Screen {
         }
         if (rt.tier < w.upgrades.length) {
           const tier = w.upgrades[rt.tier];
-          return [shopBtn(api, render, `tier:${w.id}`, `${w.name}: ${tier.label}`, tier.cost)];
+          return [shopBtn(api, render, `tier:${w.id}`, `${w.name} T${rt.tier + 1}/${w.upgrades.length}: ${tier.label}`, tier.cost)];
         }
-        return [];
+        return [shopBtn(api, render, `tier:${w.id}`, `${w.name}: all tiers owned`, 0, 'maxed')];
       }),
     );
   };
@@ -137,11 +140,20 @@ function shopBtn(
   kind: Parameters<GameApi['buyShopItem']>[0],
   label: string,
   price: number,
+  disabledReason?: string,
 ): HTMLButtonElement {
+  const credits = api.sim?.credits ?? 0;
+  const short = price - credits;
   const b = button(label, () => {
     if (api.buyShopItem(kind)) rerender();
-  }, 'btn', `◈ ${price}`);
-  if ((api.sim?.credits ?? 0) < price) b.disabled = true;
+  }, 'btn', disabledReason ?? `◈ ${price}`);
+  if (disabledReason) {
+    b.disabled = true;
+  } else if (short > 0) {
+    // The disabled reason a player actually wants: how far off they are.
+    b.disabled = true;
+    b.appendChild(el('span', { className: 'btn-reason', text: `need ◈ ${short} more` }));
+  }
   return b;
 }
 

@@ -70,6 +70,9 @@ export function validateConfigSet(set: ConfigSet): ValidationReport {
     nonNegative(errors, tag, 'spreadDeg', w.spreadDeg);
     nonNegative(errors, tag, 'pierce', w.pierce);
     nonNegative(errors, tag, 'unlockCost', w.unlockCost);
+    if (w.fireTrauma !== undefined && (w.fireTrauma < 0 || w.fireTrauma > 1)) {
+      errors.push(`${tag}: fireTrauma must be within 0..1`);
+    }
     if (slots.has(w.slot)) errors.push(`${tag}: slot ${w.slot} already taken`);
     slots.add(w.slot);
     if (w.kind === 'projectile' && !w.projectile) {

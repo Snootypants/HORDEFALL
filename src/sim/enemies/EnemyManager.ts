@@ -202,6 +202,12 @@ export class EnemyManager {
       if (diff < (cfg.shield.arcDeg * Math.PI) / 360) {
         this.shieldHp[idx] -= amount;
         this.hitFlash[idx] = 1;
+        this.bus.emit('enemy:shield-deflect', {
+          idx,
+          x: this.posX[idx],
+          y: this.posY[idx] + cfg.height * this.scale[idx] * 0.5,
+          z: this.posZ[idx],
+        });
         if (this.shieldHp[idx] <= 0) {
           this.shieldHp[idx] = 0;
           this.bus.emit('enemy:shield-break', {
@@ -274,6 +280,7 @@ export class EnemyManager {
       this.state[idx] = EState.Fuse;
       this.fuse[idx] = 0.12;
       this.hp[idx] = 0;
+      this.bus.emit('enemy:fuse', { idx, x: this.posX[idx], z: this.posZ[idx], fuse: 0.12 });
       return; // detonation in enemyAI.update finishes the job
     }
 

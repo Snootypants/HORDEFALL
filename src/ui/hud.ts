@@ -38,6 +38,7 @@ export class Hud {
   private readonly perksList: HTMLElement;
   private readonly breakTimer: HTMLElement;
   private readonly breakTimerValue: HTMLElement;
+  private reviveTag!: HTMLElement;
   private readonly indicators: HTMLElement[] = [];
 
   private hitmarkerLeft = 0;
@@ -62,7 +63,8 @@ export class Hud {
     const staminaBar = el('div', { className: 'bar thin' });
     this.staminaFill = el('div', { className: 'bar-fill', id: 'stamina-fill' });
     staminaBar.append(this.staminaFill);
-    vitals.append(hpBar, armorBar, staminaBar);
+    this.reviveTag = el('div', { id: 'revive-tag' });
+    vitals.append(hpBar, armorBar, staminaBar, this.reviveTag);
 
     const ammo = el('div', { id: 'hud-ammo', className: 'hud-corner' });
     this.weaponName = el('div', { id: 'weapon-name' });
@@ -155,6 +157,13 @@ export class Hud {
       this.vignetteLevel = Math.min(1, this.vignetteLevel + 0.5);
       this.spawnIndicator(e.fromX, e.fromZ, sim);
     }));
+    this.unsubs.push(bus.on('player:downed', (e) => {
+      this.showBanner('DOWN', e.revivesLeft > 0 ? 'emergency revival engaging…' : 'no revives left');
+    }));
+    this.unsubs.push(bus.on('player:revived', (e) => {
+      this.showAnnounce(`REVIVED — ${e.revivesLeft} ${e.revivesLeft === 1 ? 'REVIVE' : 'REVIVES'} LEFT`);
+    }));
+    this.unsubs.push(bus.on('boss:phase', (e) => this.showAnnounce(`BOSS ENRAGED — PHASE ${e.phase}`)));
     this.unsubs.push(bus.on('achievement:unlocked', (e) => this.showAnnounce(`ACHIEVEMENT — ${e.name}`)));
   }
 
@@ -217,6 +226,8 @@ export class Hud {
         return tag;
       }),
     );
+
+    this.reviveTag.textContent = sim.revivesLeft > 0 ? `⊕ ${'▮'.repeat(sim.revivesLeft)} REVIVE` : '';
 
     this.waveText.textContent = `W-${Math.max(1, sim.waves.wave)}`;
     this.scoreText.textContent = sim.progression.score.toLocaleString();

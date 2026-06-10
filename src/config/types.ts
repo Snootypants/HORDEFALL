@@ -68,6 +68,8 @@ export interface WeaponConfig {
   unlockCost: number;
   unlockedByDefault: boolean;
   adsZoom?: number;
+  /** Camera shake per shot (0..1) — sells weapon weight. */
+  fireTrauma?: number;
 }
 
 // ---------------------------------------------------------------------------

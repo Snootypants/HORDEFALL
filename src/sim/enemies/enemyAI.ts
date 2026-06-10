@@ -210,6 +210,7 @@ function think(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpdateC
         mgr.fuse[i] = cfg.explode.fuse;
         mgr.desiredVX[i] = 0;
         mgr.desiredVZ[i] = 0;
+        ctx.bus.emit('enemy:fuse', { idx: i, x: px, z: pz, fuse: cfg.explode.fuse });
       }
       break;
 
@@ -225,6 +226,7 @@ function think(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpdateC
 
     case 'support':
       if (cfg.aura) {
+        ctx.bus.emit('enemy:aura-pulse', { x: px, z: pz, radius: cfg.aura.radius });
         mgr.grid.queryCircle(px, pz, cfg.aura.radius, neighborScratch);
         for (let n = 0; n < neighborScratch.length; n++) {
           const j = neighborScratch[n];
