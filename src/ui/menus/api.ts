@@ -4,6 +4,7 @@
  */
 
 import type { Simulation } from '../../sim/Simulation';
+import type { TuningOverrides } from '../../sim/tuning';
 import type { SaveManager, SaveDataV2 } from '../../save/SaveManager';
 import type { AudioManager } from '../../audio/AudioManager';
 import type { InputManager } from '../../input/InputManager';
@@ -19,6 +20,8 @@ export interface GameApi {
   /** Null until a run starts. */
   readonly sim: Simulation | null;
   readonly debugDraw: DebugDraw | null;
+  /** Session tuning overrides (dev tools) — separate from save data. */
+  readonly tuning: TuningOverrides;
 
   startRun(mapId: string, seed: number | null, daily: boolean): void;
   resumeGame(): void;

@@ -85,6 +85,15 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   expect(after.hasSim).toBe(true);
   expect(after.drawCalls).toBeGreaterThan(0);
 
+  // --- Tuning console renders inside the F8 developer menu
+  await page.keyboard.press('F8');
+  await expect(screen.locator('.heading', { hasText: 'Developer' })).toBeVisible();
+  await screen.getByRole('button', { name: 'TUNING' }).click();
+  await expect(screen.getByText(/WEAPONS — damage & tiers apply LIVE/)).toBeVisible();
+  await expect(screen.getByText('Global drop chance')).toBeVisible();
+  await expect(screen.getByRole('button', { name: 'Export preset JSON' })).toBeVisible();
+  await page.keyboard.press('Escape'); // resume from debug menu
+
   // --- Quit to menu and back: teardown must not error or leak listeners
   await page.keyboard.press('Escape');
   await expect(screen.locator('.heading', { hasText: 'Paused' })).toBeVisible();

@@ -30,13 +30,14 @@ export function effectiveWeights(
   configs: PickupConfig[],
   needs: ResourceNeeds,
   ammoDropMult: number,
+  weightMults?: Record<string, number>,
 ): number[] {
   const eco = BALANCE.economy;
   const maxBoost = eco.adaptiveDropMaxBoost;
   const armorNeed = 1 - (Number.isFinite(needs.armorFrac) ? clamp01(needs.armorFrac) : 1);
 
   return configs.map((c) => {
-    let weight = c.weight;
+    let weight = c.weight * (weightMults?.[c.id] ?? 1);
     let mult = 1;
     switch (c.kind) {
       case 'ammo':
@@ -61,8 +62,9 @@ export function effectiveDropOdds(
   configs: PickupConfig[],
   needs: ResourceNeeds,
   ammoDropMult: number,
+  weightMults?: Record<string, number>,
 ): { id: string; weight: number; odds: number }[] {
-  const weights = effectiveWeights(configs, needs, ammoDropMult);
+  const weights = effectiveWeights(configs, needs, ammoDropMult, weightMults);
   const total = weights.reduce((a, b) => a + b, 0) || 1;
   return configs.map((c, i) => ({ id: c.id, weight: weights[i], odds: weights[i] / total }));
 }

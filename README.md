@@ -196,5 +196,6 @@ The codebase was shaped for an authoritative-server future:
 
 - **~** dev console: `help`, `god`, `noclip`, `give credits 5000`, `give xp 1000`, `spawn tank 5`, `stress 750`, `wave 10`, `skipwave`, `forceboss`, `unlockall`, `killall`, `upgrade lifesteal`, `validate`, `seed`
 - **F8** developer menu: stress buttons (100/250/500/750/1000), per-type spawns, god/noclip, hitbox/AI-state/steering/spawn-point visualization, AI-throttle toggle, wave skip, force boss
+- **F8 → TUNING** live tuning console: per-weapon damage sliders + tier toggles + gun unlocks (LIVE), per-enemy HP/speed/damage sliders (new spawns), global drop chance + per-pickup weights with a live effective-odds readout, refills, reset, and preset JSON import/export. Session-only — never written to the save file.
 - **F3** performance overlay
 - `window.HORDEFALL` exposes the orchestrator in the browser console

@@ -4,6 +4,7 @@
  */
 
 import type { EnemyConfig, EnemyScalingConfig } from '../../config/types';
+import type { TuningOverrides } from '../tuning';
 import { expCurve } from '../../core/math';
 
 export interface ScaledEnemyStats {
@@ -20,6 +21,7 @@ export function scaleEnemy(
   wave: number,
   scaling: EnemyScalingConfig,
   elite: boolean,
+  tuning?: TuningOverrides,
 ): ScaledEnemyStats {
   const w = Math.max(0, wave - 1);
   const hpMult = (1 + scaling.hpPerWave * w) * expCurve(1, scaling.hpGrowth, w);
@@ -28,9 +30,9 @@ export function scaleEnemy(
   const rewardMult = 1 + 0.05 * w;
 
   return {
-    hp: cfg.hp * hpMult * (elite ? scaling.eliteHpMult : 1),
-    damage: cfg.damage * dmgMult * (elite ? scaling.eliteDamageMult : 1),
-    speed: cfg.speed * speedMult,
+    hp: cfg.hp * hpMult * (elite ? scaling.eliteHpMult : 1) * (tuning?.enemyHpMult[cfg.id] ?? 1),
+    damage: cfg.damage * dmgMult * (elite ? scaling.eliteDamageMult : 1) * (tuning?.enemyDamageMult[cfg.id] ?? 1),
+    speed: cfg.speed * speedMult * (tuning?.enemySpeedMult[cfg.id] ?? 1),
     scale: cfg.scale * (elite ? scaling.eliteScale : 1),
     xp: Math.round(cfg.xp * rewardMult * (elite ? 2 : 1)),
     score: Math.round(cfg.score * rewardMult * (elite ? 2 : 1)),
@@ -42,13 +44,14 @@ export function scaleBoss(
   cfg: EnemyConfig,
   bossNumber: number,
   scaling: EnemyScalingConfig,
+  tuning?: TuningOverrides,
 ): ScaledEnemyStats {
   const n = Math.max(0, bossNumber - 1);
   const mult = 1 + scaling.bossHpPerBossNumber * n;
   return {
-    hp: cfg.hp * mult,
-    damage: cfg.damage * (1 + 0.2 * n),
-    speed: cfg.speed,
+    hp: cfg.hp * mult * (tuning?.enemyHpMult[cfg.id] ?? 1),
+    damage: cfg.damage * (1 + 0.2 * n) * (tuning?.enemyDamageMult[cfg.id] ?? 1),
+    speed: cfg.speed * (tuning?.enemySpeedMult[cfg.id] ?? 1),
     scale: cfg.scale,
     xp: Math.round(cfg.xp * (1 + 0.5 * n)),
     score: Math.round(cfg.score * (1 + 0.5 * n)),

@@ -12,6 +12,7 @@ import type { EnemyManager } from '../enemies/EnemyManager';
 import type { EnemyScalingConfig } from '../../config/types';
 import { generateWave, type GeneratedWave, type WavePerformance } from './waveGenerator';
 import { scaleEnemy, scaleBoss } from '../enemies/scaling';
+import type { TuningOverrides } from '../tuning';
 import { dist2XZ } from '../../core/math';
 
 export type WaveState = 'idle' | 'break' | 'spawning' | 'active' | 'gameover';
@@ -48,6 +49,8 @@ export class WaveDirector {
   /** Dev tools: force the next wave's event. */
   forcedEventId: WaveEventId | null = null;
 
+  private readonly tuning?: TuningOverrides;
+
   constructor(opts: {
     balance: WaveBalanceConfig;
     scaling: EnemyScalingConfig;
@@ -57,6 +60,7 @@ export class WaveDirector {
     bus: GameBus;
     rng: Rng;
     mgr: EnemyManager;
+    tuning?: TuningOverrides;
   }) {
     this.balance = opts.balance;
     this.scaling = opts.scaling;
@@ -66,6 +70,7 @@ export class WaveDirector {
     this.bus = opts.bus;
     this.rng = opts.rng;
     this.mgr = opts.mgr;
+    this.tuning = opts.tuning;
   }
 
   startRun(): void {
@@ -189,8 +194,8 @@ export class WaveDirector {
     if (!cfg) return;
     const point = this.pickSpawnPoint(player);
     const scaled = cfg.role === 'boss'
-      ? scaleBoss(cfg, this.bossNumber, this.scaling)
-      : scaleEnemy(cfg, this.wave, this.scaling, q.elite);
+      ? scaleBoss(cfg, this.bossNumber, this.scaling, this.tuning)
+      : scaleEnemy(cfg, this.wave, this.scaling, q.elite, this.tuning);
     // Small jitter so batch-mates don't stack.
     const jx = this.rng.range(-1.5, 1.5);
     const jz = this.rng.range(-1.5, 1.5);

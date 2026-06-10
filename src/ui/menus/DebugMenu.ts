@@ -7,6 +7,7 @@ import { el, button } from '../dom';
 import type { Screen } from '../UIManager';
 import type { GameApi } from './api';
 import { ENEMIES } from '../../config/enemies';
+import { createTuningPanel } from './TuningPanel';
 
 export function createDebugMenu(api: GameApi): Screen {
   const root = el('div', { className: 'screen' });
@@ -14,6 +15,8 @@ export function createDebugMenu(api: GameApi): Screen {
   panel.style.minWidth = '560px';
 
   const status = el('div', { className: 'muted mono' });
+  const tuning = createTuningPanel(api);
+  let activeTab: 'tools' | 'tuning' = 'tools';
 
   const stressRow = el('div', { className: 'row' });
   for (const count of [100, 250, 500, 750, 1000]) {
@@ -55,17 +58,46 @@ export function createDebugMenu(api: GameApi): Screen {
     );
   };
 
-  panel.append(
-    el('div', { className: 'heading', text: 'Developer' }),
-    status,
+  const tabs = el('div', { className: 'tabs' });
+  const toolsBody = el('div');
+  const body = el('div');
+  for (const name of ['tools', 'tuning'] as const) {
+    const tab = el('button', { className: 'tab', text: name.toUpperCase() });
+    tab.addEventListener('click', () => {
+      activeTab = name;
+      render();
+    });
+    tabs.appendChild(tab);
+  }
+
+  const render = (): void => {
+    tabs.querySelectorAll('.tab').forEach((t, i) =>
+      t.classList.toggle('active', (i === 0) === (activeTab === 'tools')));
+    if (activeTab === 'tools') {
+      refresh();
+      body.replaceChildren(toolsBody);
+    } else {
+      tuning.refresh();
+      body.replaceChildren(tuning.root);
+    }
+  };
+
+  toolsBody.append(
     el('div', { className: 'muted', text: 'STRESS TEST — spawn N enemies in a ring' }),
     stressRow,
     toggles,
     el('div', { className: 'muted', text: 'SPAWN CONTROLS' }),
     spawnRow,
+  );
+
+  panel.append(
+    el('div', { className: 'heading', text: 'Developer' }),
+    status,
+    tabs,
+    body,
     button('Close', () => api.resumeGame(), 'btn btn-phosphor'),
   );
   root.appendChild(panel);
 
-  return { root, onShow: refresh };
+  return { root, onShow: render };
 }

@@ -46,9 +46,9 @@ export class Pickups {
    * Weighted drop roll at a death location; weights adapt to the player's
    * current needs (see drops.ts). Returns true if spawned.
    */
-  rollDrop(x: number, z: number, rng: Rng, dropChance: number, ammoDropMult: number, needs: ResourceNeeds): boolean {
+  rollDrop(x: number, z: number, rng: Rng, dropChance: number, ammoDropMult: number, needs: ResourceNeeds, weightMults?: Record<string, number>): boolean {
     if (!rng.chance(dropChance)) return false;
-    const weights = effectiveWeights(this.configs, needs, ammoDropMult);
+    const weights = effectiveWeights(this.configs, needs, ammoDropMult, weightMults);
     let total = 0;
     for (const w of weights) total += w;
     let roll = rng.next() * total;

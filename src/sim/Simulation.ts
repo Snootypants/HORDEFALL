@@ -36,11 +36,14 @@ import { computePlayerStats, type ComputedPlayerStats } from './progression/upgr
 import { RunStats } from './RunStats';
 import type { CombatContext } from './combat/context';
 import type { InputCommand } from './inputCommand';
+import { defaultTuning, type TuningOverrides } from './tuning';
 
 export interface SimulationOptions {
   mapConfig: MapConfig;
   seed: number;
   unlockedWeapons?: string[];
+  /** Session tuning overrides (dev console); never part of save data. */
+  tuning?: TuningOverrides;
 }
 
 export class Simulation {
@@ -60,6 +63,8 @@ export class Simulation {
   readonly barrels: Barrels;
   readonly progression = new Progression(BALANCE.progression);
   readonly stats = new RunStats();
+  /** Session tuning overrides; sim systems read these at application points. */
+  readonly tuning: TuningOverrides;
 
   time = 0;
   credits = 0;
@@ -81,11 +86,12 @@ export class Simulation {
 
   constructor(opts: SimulationOptions) {
     this.seed = opts.seed;
+    this.tuning = opts.tuning ?? defaultTuning();
     this.rng = new Rng(opts.seed);
     this.map = generateMap(opts.mapConfig, opts.mapConfig.seed ^ opts.seed);
     this.collision = new CollisionWorld(this.map);
     this.player = new PlayerSim(BALANCE.player, this.bus, this.map.playerSpawn.x, this.map.playerSpawn.z);
-    this.weapons = new WeaponSim(WEAPONS, opts.unlockedWeapons ?? [], this.bus, this.rng.fork('weapons'));
+    this.weapons = new WeaponSim(WEAPONS, opts.unlockedWeapons ?? [], this.bus, this.rng.fork('weapons'), this.tuning);
     this.enemies = new EnemyManager(ENEMIES, this.bus);
     this.barrels = new Barrels(this.map.barrels);
     this.pickups = new Pickups(PICKUPS, this.bus);
@@ -98,6 +104,7 @@ export class Simulation {
       bus: this.bus,
       rng: this.rng.fork('waves'),
       mgr: this.enemies,
+      tuning: this.tuning,
     });
 
     this.playerStats = computePlayerStats(BALANCE.player, this.upgradeStacks, UPGRADES);
@@ -148,7 +155,7 @@ export class Simulation {
     this.enemies.setMinionSpawner((enemyId, x, z, wave) => {
       const cfg = enemyById(enemyId);
       if (!cfg) return;
-      const scaled = scaleEnemy(cfg, Math.max(1, wave), BALANCE.enemyScaling, false);
+      const scaled = scaleEnemy(cfg, Math.max(1, wave), BALANCE.enemyScaling, false, this.tuning);
       this.enemies.spawn(cfg, scaled, x, z, false, wave);
     });
 
@@ -168,7 +175,13 @@ export class Simulation {
       this.credits += credits;
       this.stats.creditsEarned += credits;
       this.bus.emit('currency:changed', { total: this.credits });
-      this.pickups.rollDrop(e.x, e.z, this.rng, BALANCE.economy.dropChance, this.waves.ammoDropMult, this.resourceNeeds());
+      this.pickups.rollDrop(
+        e.x, e.z, this.rng,
+        this.tuning.dropChance ?? BALANCE.economy.dropChance,
+        this.waves.ammoDropMult,
+        this.resourceNeeds(),
+        this.tuning.pickupWeightMult,
+      );
     });
     this.bus.on('pickup:collected', () => {
       this.stats.pickupsCollected++;
@@ -345,7 +358,7 @@ export class Simulation {
     const cfg = enemyById(enemyId);
     if (!cfg) return -1;
     const wave = Math.max(1, this.waves.wave);
-    const scaled = scaleEnemy(cfg, wave, BALANCE.enemyScaling, elite);
+    const scaled = scaleEnemy(cfg, wave, BALANCE.enemyScaling, elite, this.tuning);
     return this.enemies.spawn(cfg, scaled, x, z, elite, -1);
   }
 }

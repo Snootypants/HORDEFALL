@@ -17,6 +17,7 @@ import { wireAudio } from '../audio/audioWiring';
 import { InputManager } from '../input/InputManager';
 import { UIManager, type ScreenName } from '../ui/UIManager';
 import { setUiSoundHook } from '../ui/uiSound';
+import { defaultTuning } from '../sim/tuning';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/Minimap';
 import { DamageNumbers } from '../ui/DamageNumbers';
@@ -45,6 +46,8 @@ export class Game implements GameApi {
   readonly devConsole: DevConsole;
   readonly perfOverlay: PerfOverlay;
   readonly achievements: AchievementTracker;
+  /** Session-lifetime tuning overrides; passed to every new Simulation. */
+  readonly tuning = defaultTuning();
 
   sim: Simulation | null = null;
   renderer: GameRenderer | null = null;
@@ -119,6 +122,7 @@ export class Game implements GameApi {
       mapConfig,
       seed: finalSeed,
       unlockedWeapons: this.saveData.unlocks.weapons,
+      tuning: this.tuning,
     });
     this.sim.enemies.setCorpseBudget(this.saveData.settings.graphics.maxCorpses);
     this.renderer = new GameRenderer(this.canvas, this.sim, this.saveData.settings.graphics, this.saveData.settings.fov);

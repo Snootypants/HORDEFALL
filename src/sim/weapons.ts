@@ -12,6 +12,8 @@ import type { Rng } from '../core/Rng';
 import { computeHitDamage } from './combat/damage';
 import { applyOnHitEffects, applyRicochet } from './combat/onHit';
 import { swingMelee } from './combat/melee';
+import { defaultTuning, type TuningOverrides } from './tuning';
+import { effectiveWeaponStats, type EffectiveWeaponStats } from './weaponStats';
 import { raycastEnemies, hitsWeakPoint } from './enemies/enemyQueries';
 import type { PlayerProjectiles } from './projectiles';
 import { clamp } from '../core/math';
@@ -24,13 +26,7 @@ export interface WeaponRuntime {
   unlocked: boolean;
 }
 
-export interface EffectiveWeaponStats {
-  damage: number;
-  rpm: number;
-  magSize: number;
-  reloadTime: number;
-  spreadDeg: number;
-}
+export type { EffectiveWeaponStats } from './weaponStats';
 
 export interface FireView {
   ox: number;
@@ -58,10 +54,13 @@ export class WeaponSim {
   private readonly hitHead: boolean[] = [];
   private readonly barrelT: number[] = [0];
 
-  constructor(weapons: WeaponConfig[], unlockedIds: string[], bus: GameBus, rng: Rng) {
+  private readonly tuning: TuningOverrides;
+
+  constructor(weapons: WeaponConfig[], unlockedIds: string[], bus: GameBus, rng: Rng, tuning: TuningOverrides = defaultTuning()) {
     this.weapons = weapons;
     this.bus = bus;
     this.rng = rng;
+    this.tuning = tuning;
     for (const w of weapons) {
       this.runtime.set(w.id, {
         mag: w.magSize,
@@ -112,30 +111,9 @@ export class WeaponSim {
     return score;
   }
 
-  /** Config + purchased tiers + player stat sheet → concrete numbers. */
+  /** Config + purchased tiers + player stat sheet + tuning → concrete numbers. */
   effective(ctx: CombatContext, cfg = this.current): EffectiveWeaponStats {
-    const rt = this.runtime.get(cfg.id)!;
-    let damage = cfg.damage;
-    let rpm = cfg.rpm;
-    let magSize = cfg.magSize;
-    let reloadTime = cfg.reloadTime;
-    let spreadDeg = cfg.spreadDeg;
-    for (let t = 0; t < rt.tier && t < cfg.upgrades.length; t++) {
-      const tier = cfg.upgrades[t];
-      if (tier.damageMult) damage *= tier.damageMult;
-      if (tier.rpmMult) rpm *= tier.rpmMult;
-      if (tier.magBonus) magSize += tier.magBonus;
-      if (tier.reloadMult) reloadTime *= tier.reloadMult;
-      if (tier.spreadMult) spreadDeg *= tier.spreadMult;
-    }
-    const stats = ctx.player().stats;
-    return {
-      damage: damage * stats.damageMult,
-      rpm: rpm * stats.fireRateMult,
-      magSize: Math.round(magSize * stats.magSizeMult),
-      reloadTime: reloadTime / stats.reloadSpeedMult,
-      spreadDeg,
-    };
+    return effectiveWeaponStats(cfg, this.runtime.get(cfg.id)!.tier, this.tuning, ctx.player().stats);
   }
 
   update(dt: number, input: InputCommand, view: FireView, ctx: CombatContext, projectiles: PlayerProjectiles): void {
