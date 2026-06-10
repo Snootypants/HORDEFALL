@@ -97,6 +97,7 @@ export class WaveDirector {
     simTime: number,
     player: { x: number; z: number; yaw: number; alive: boolean; damageTakenThisWave: number },
     playerLevel: number,
+    weaponPower = 0,
   ): void {
     switch (this.state) {
       case 'idle':
@@ -105,7 +106,7 @@ export class WaveDirector {
 
       case 'break':
         this.breakLeft -= dt;
-        if (this.breakLeft <= 0) this.beginWave(simTime, player, playerLevel);
+        if (this.breakLeft <= 0) this.beginWave(simTime, player, playerLevel, weaponPower);
         return;
 
       case 'spawning': {
@@ -141,6 +142,7 @@ export class WaveDirector {
     simTime: number,
     player: { x: number; z: number; yaw: number; damageTakenThisWave: number },
     playerLevel: number,
+    weaponPower: number,
   ): void {
     this.wave++;
     const generated = generateWave({
@@ -151,6 +153,8 @@ export class WaveDirector {
       balance: this.balance,
       playerLevel,
       performance: this.lastPerformance,
+      timeSurvivedSec: simTime,
+      weaponPower,
       forcedEventId: this.forcedEventId ?? undefined,
     });
     this.forcedEventId = null;

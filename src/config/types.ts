@@ -165,6 +165,13 @@ export interface WaveBalanceConfig {
   /** Budget multiplier range applied from prior-wave performance. */
   perfBudgetMin: number;
   perfBudgetMax: number;
+  /** Run pace: expected seconds per completed wave; faster runs scale up. */
+  paceTargetSecPerWave: number;
+  /** Clamp range for the pace budget multiplier. */
+  paceBudgetMin: number;
+  paceBudgetMax: number;
+  /** Budget multiplier per point of weapon power (unlocks + tiers). */
+  weaponPowerBudgetFactor: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -314,6 +321,10 @@ export interface PlayerBalanceConfig {
   /** Armor absorbs this fraction of incoming damage while it lasts. */
   armorAbsorb: number;
   respawnInvulnSec: number;
+  /** Revive tokens per run; 0 = permadeath. */
+  revives: number;
+  /** Downed-state delay before the revive fires. */
+  reviveDelaySec: number;
 }
 
 export interface ProgressionBalanceConfig {

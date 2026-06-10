@@ -39,6 +39,8 @@ export interface GameEvents {
   'player:armor-break': Record<string, never>;
   'player:healed': { amount: number };
   'player:died': Record<string, never>;
+  'player:downed': { revivesLeft: number; delay: number };
+  'player:revived': { revivesLeft: number; invulnSec: number };
   'player:levelup': { level: number };
   'player:killstreak': { streak: number };
   'player:low-health': Record<string, never>;

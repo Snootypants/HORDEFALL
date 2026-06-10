@@ -45,6 +45,10 @@ export interface GenerateWaveOptions {
   balance: WaveBalanceConfig;
   playerLevel: number;
   performance: WavePerformance | null;
+  /** Total sim time when this wave begins (run pace input). */
+  timeSurvivedSec: number;
+  /** Weapon arsenal strength (WeaponSim.powerScore: unlocks + tiers). */
+  weaponPower: number;
   /** Dev tools / tests: force a specific event instead of rolling. */
   forcedEventId?: WaveEventId;
 }
@@ -56,6 +60,17 @@ function performanceMult(perf: WavePerformance | null, balance: WaveBalanceConfi
   const healthScore = clamp01(1 - perf.damageTaken / 150);
   const norm = speedScore * 0.5 + healthScore * 0.5;
   return lerp(balance.perfBudgetMin, balance.perfBudgetMax, norm);
+}
+
+/**
+ * Run-pace multiplier: players clearing waves faster than the target pace
+ * get a budget bump; slow runs get mild relief. Wave 1 has no completed
+ * waves to measure, so it is always neutral.
+ */
+function paceMult(wave: number, timeSurvivedSec: number, balance: WaveBalanceConfig): number {
+  if (wave <= 1 || timeSurvivedSec <= 0) return 1;
+  const secPerWave = timeSurvivedSec / (wave - 1);
+  return clamp(balance.paceTargetSecPerWave / secPerWave, balance.paceBudgetMin, balance.paceBudgetMax);
 }
 
 function rollEvent(
@@ -77,7 +92,7 @@ function rollEvent(
 }
 
 export function generateWave(opts: GenerateWaveOptions): GeneratedWave {
-  const { wave, rng, enemies, events, balance, playerLevel, performance } = opts;
+  const { wave, rng, enemies, events, balance, playerLevel, performance, timeSurvivedSec, weaponPower } = opts;
 
   const isBoss = balance.bossEvery > 0 && wave % balance.bossEvery === 0;
   let event: WaveEventConfig;
@@ -95,7 +110,9 @@ export function generateWave(opts: GenerateWaveOptions): GeneratedWave {
     expCurve(1, balance.budgetGrowth, w) *
     event.budgetMult *
     performanceMult(performance, balance) *
-    (1 + 0.02 * Math.max(0, playerLevel - 1));
+    (1 + 0.02 * Math.max(0, playerLevel - 1)) *
+    paceMult(wave, timeSurvivedSec, balance) *
+    (1 + balance.weaponPowerBudgetFactor * Math.max(0, weaponPower));
   budget = Math.round(budget);
 
   // Budget-pickable pool for this wave.

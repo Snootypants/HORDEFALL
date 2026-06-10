@@ -31,6 +31,7 @@ export function wireAudio(bus: GameBus, audio: AudioManager): () => void {
 
   subs.push(bus.on('player:damaged', () => audio.play('player-hurt', 1, 150)));
   subs.push(bus.on('player:died', () => audio.play('player-die')));
+  subs.push(bus.on('player:revived', () => audio.play('levelup')));
   subs.push(bus.on('player:low-health', () => audio.play('heartbeat', 1, 800)));
   subs.push(bus.on('player:levelup', () => audio.play('levelup')));
 

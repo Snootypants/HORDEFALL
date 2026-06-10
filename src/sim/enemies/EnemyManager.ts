@@ -82,6 +82,8 @@ export class EnemyManager {
   /** Boss charge timer; -1 marks a pending slam strike. */
   readonly special = new Float32Array(MAX_ENEMIES);
   readonly bossPhase = new Uint8Array(MAX_ENEMIES);
+  /** Phase speed multiplier — 1 for everything except bosses in later phases. */
+  readonly bossSpeedMult = new Float32Array(MAX_ENEMIES).fill(1);
   readonly waveTag = new Int16Array(MAX_ENEMIES);
   readonly losClear = new Uint8Array(MAX_ENEMIES);
   /** Raycast dedupe stamps (see enemyQueries). */
@@ -159,6 +161,7 @@ export class EnemyManager {
     this.desiredVZ[idx] = 0;
     this.special[idx] = 0;
     this.bossPhase[idx] = 0;
+    this.bossSpeedMult[idx] = 1;
     this.waveTag[idx] = wave;
     this.losClear[idx] = 0;
     this.status.clear(idx);

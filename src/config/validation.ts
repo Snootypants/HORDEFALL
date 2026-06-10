@@ -180,6 +180,12 @@ export function validateConfigSet(set: ConfigSet): ValidationReport {
   if (b.waves.minSpawnDistance >= b.waves.maxSpawnDistance) {
     errors.push('balance.waves: minSpawnDistance must be < maxSpawnDistance');
   }
+  positive(errors, 'balance.waves', 'paceTargetSecPerWave', b.waves.paceTargetSecPerWave);
+  nonNegative(errors, 'balance.waves', 'weaponPowerBudgetFactor', b.waves.weaponPowerBudgetFactor);
+  positive(errors, 'balance.waves', 'paceBudgetMin', b.waves.paceBudgetMin);
+  if (b.waves.paceBudgetMin > b.waves.paceBudgetMax) {
+    errors.push('balance.waves: paceBudgetMin must be <= paceBudgetMax');
+  }
 
   return {
     errors,

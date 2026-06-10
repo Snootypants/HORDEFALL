@@ -14,6 +14,8 @@ const gen = (wave: number, seed = 1, opts: Partial<Parameters<typeof generateWav
     balance: BALANCE.waves,
     playerLevel: 1,
     performance: null,
+    timeSurvivedSec: 0,
+    weaponPower: 0,
     ...opts,
   });
 

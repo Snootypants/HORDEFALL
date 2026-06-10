@@ -80,6 +80,20 @@ export class WeaponSim {
     return this.runtime.get(id)!;
   }
 
+  /**
+   * Arsenal strength for wave-budget scaling: +1 per non-default unlock,
+   * +0.5 per purchased tier. The stock loadout scores 0.
+   */
+  powerScore(): number {
+    let score = 0;
+    for (const w of this.weapons) {
+      const rt = this.runtime.get(w.id)!;
+      if (rt.unlocked && !w.unlockedByDefault) score += 1;
+      score += rt.tier * 0.5;
+    }
+    return score;
+  }
+
   /** Config + purchased tiers + player stat sheet → concrete numbers. */
   effective(ctx: CombatContext, cfg = this.current): EffectiveWeaponStats {
     const rt = this.runtime.get(cfg.id)!;

@@ -63,6 +63,9 @@ export class Simulation {
 
   time = 0;
   credits = 0;
+  /** Revive tokens left this run; the run ends only when these are spent. */
+  revivesLeft = BALANCE.player.revives;
+  private reviveCountdown = 0;
   /** Owned upgrade stacks (id → count). */
   readonly upgradeStacks = new Map<string, number>();
   playerStats: ComputedPlayerStats;
@@ -243,13 +246,22 @@ export class Simulation {
 
     // 8. Waves
     if (!this.player.alive && this.waves.state !== 'gameover') {
-      // Dying mid-wave means the current wave wasn't survived.
-      const inCombat = this.waves.state === 'spawning' || this.waves.state === 'active';
-      this.waves.gameOver();
-      this.stats.wavesSurvived = Math.max(0, this.waves.wave - (inCombat ? 1 : 0));
-      this.bus.emit('run:gameover', {});
+      if (this.reviveCountdown > 0) {
+        this.reviveCountdown -= dt;
+        if (this.reviveCountdown <= 0) this.revivePlayer();
+      } else if (this.revivesLeft > 0) {
+        this.revivesLeft--;
+        this.reviveCountdown = BALANCE.player.reviveDelaySec;
+        this.bus.emit('player:downed', { revivesLeft: this.revivesLeft, delay: this.reviveCountdown });
+      } else {
+        // Dying mid-wave means the current wave wasn't survived.
+        const inCombat = this.waves.state === 'spawning' || this.waves.state === 'active';
+        this.waves.gameOver();
+        this.stats.wavesSurvived = Math.max(0, this.waves.wave - (inCombat ? 1 : 0));
+        this.bus.emit('run:gameover', {});
+      }
     } else {
-      this.waves.update(dt, this.time, this.player, this.progression.level);
+      this.waves.update(dt, this.time, this.player, this.progression.level, this.weapons.powerScore());
       if (this.waves.state === 'break' || this.waves.state === 'idle') {
         this.stats.wavesSurvived = this.waves.wave;
       }
@@ -280,6 +292,23 @@ export class Simulation {
     this.player.health = Math.max(this.player.health, healthFrac * this.player.maxHealth);
     this.player.armor = Math.max(this.player.armor, armorFrac * this.player.maxArmor);
     this.companions.syncCounts(this.playerStats.droneCount, this.playerStats.turretCount);
+  }
+
+  /**
+   * Revive: back to the spawn point at full health with brief invulnerability.
+   * Enemies near the spawn are stunned so the revive can't be an instant
+   * re-down.
+   */
+  private revivePlayer(): void {
+    const spawn = this.map.playerSpawn;
+    this.player.respawn(spawn.x, spawn.z, this.time);
+    const hits: number[] = [];
+    this.enemies.queryRadius(spawn.x, spawn.z, 10, hits);
+    for (const j of hits) this.enemies.applyStatus(j, 'stun');
+    this.bus.emit('player:revived', {
+      revivesLeft: this.revivesLeft,
+      invulnSec: BALANCE.player.respawnInvulnSec,
+    });
   }
 
   /** Shield-burst nova: damage + stun in a ring around the player. */

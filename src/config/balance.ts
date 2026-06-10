@@ -19,6 +19,8 @@ export const BALANCE: BalanceConfig = {
     radius: 0.4,
     armorAbsorb: 0.66,
     respawnInvulnSec: 2.0,
+    revives: 1,
+    reviveDelaySec: 2.5,
   },
   progression: {
     xpBase: 100,
@@ -60,5 +62,9 @@ export const BALANCE: BalanceConfig = {
     playerFovAvoidDeg: 70,
     perfBudgetMin: 0.85,
     perfBudgetMax: 1.25,
+    paceTargetSecPerWave: 75,
+    paceBudgetMin: 0.92,
+    paceBudgetMax: 1.12,
+    weaponPowerBudgetFactor: 0.02,
   },
 };

@@ -8,6 +8,7 @@ import { generateMap } from '../src/sim/mapGen';
 import { CollisionWorld } from '../src/sim/collision';
 import { Simulation } from '../src/sim/Simulation';
 import { MAPS } from '../src/config/maps';
+import { BALANCE } from '../src/config/balance';
 import { enemyById } from '../src/config/enemies';
 import { neutralInput } from '../src/sim/inputCommand';
 
@@ -125,13 +126,18 @@ describe('headless simulation', () => {
     expect(sim.playerStats.stats.maxHealth).toBe(before + 25);
   });
 
-  test('player death ends in game-over state', () => {
+  test('player death burns revive tokens, then ends in game-over state', () => {
     const sim = makeSim();
     sim.startRun();
-    sim.player.applyDamage(10_000, 0, 0, sim.time);
-    expect(sim.player.alive).toBe(false);
     const input = neutralInput();
-    sim.tick(1 / 60, input);
+    const settleTicks = Math.ceil((BALANCE.player.reviveDelaySec + 0.2) * 60);
+    for (let death = 0; death <= BALANCE.player.revives; death++) {
+      sim.player.invulnUntil = -Infinity;
+      sim.player.applyDamage(10_000, 0, 0, sim.time);
+      expect(sim.player.alive).toBe(false);
+      for (let i = 0; i < settleTicks; i++) sim.tick(1 / 60, input);
+    }
+    expect(sim.revivesLeft).toBe(0);
     expect(sim.waves.state).toBe('gameover');
   });
 
