@@ -59,19 +59,19 @@ export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: (
     root.append(el('div', { className: 'muted', text: 'WEAPONS — damage & tiers apply LIVE; unlocks apply now' }));
     for (const w of WEAPONS) {
       const rowHead = el('div', { className: 'row' });
-      const rt = api.sim?.weapons.runtime.get(w.id);
-      const unlockBox = checkbox(rt ? rt.unlocked : false, (v) => {
-        const sim = api.sim;
-        if (!sim) return;
-        const r = sim.weapons.runtime.get(w.id)!;
-        r.unlocked = v;
-        if (!v && sim.weapons.currentId === w.id) {
-          const fallback = sim.weapons.weapons.find((x) => sim.weapons.runtime.get(x.id)!.unlocked);
-          if (fallback) sim.weapons.currentId = fallback.id;
-        }
-      });
-      unlockBox.title = 'unlocked';
-      rowHead.append(unlockBox, el('span', { text: w.name }));
+      if (w.kind === 'melee') {
+        // The fallback is never lockable — show it, don't offer a checkbox.
+        rowHead.append(el('span', { className: 'muted', text: '⊘' }), el('span', { text: `${w.name} (always available)` }));
+      } else {
+        const rt = api.sim?.weapons.runtime.get(w.id);
+        // Session-only toggle: setUnlocked never touches profile unlocks and
+        // refuses changes that would leave zero usable weapons.
+        const unlockBox = checkbox(rt ? rt.unlocked : false, (v) => {
+          if (!api.sim?.weapons.setUnlocked(w.id, v)) refresh();
+        });
+        unlockBox.title = 'unlocked (session only — never saved to profile)';
+        rowHead.append(unlockBox, el('span', { text: w.name }));
+      }
       if (w.upgrades.length > 0) {
         const tiers = api.tuning.disabledTiers;
         w.upgrades.forEach((tier, t) => {

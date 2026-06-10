@@ -111,8 +111,12 @@ export function createShopScreen(api: GameApi): Screen {
     creditsLine.textContent = `◈ ${sim.credits} credits`;
     const eco = BALANCE.economy;
     const p = sim.player;
+    const ammoTarget = sim.weapons.ammoRefillTarget();
     grid.replaceChildren(
-      shopBtn(api, render, 'ammo', `Refill ${sim.weapons.current.name} reserve`, eco.ammoPrice),
+      shopBtn(api, render, 'ammo',
+        ammoTarget ? `Refill ${ammoTarget.name} reserve` : 'Refill ammo',
+        eco.ammoPrice,
+        ammoTarget ? undefined : 'all reserves full'),
       shopBtn(api, render, 'health', '+50 health', eco.healthPrice,
         p.health >= p.maxHealth ? 'integrity full' : undefined),
       shopBtn(api, render, 'armor', '+50 armor', eco.armorPrice,

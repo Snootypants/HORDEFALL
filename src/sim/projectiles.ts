@@ -19,6 +19,9 @@ export class PlayerProjectiles {
   readonly velZ = new Float32Array(MAX);
   readonly life = new Float32Array(MAX);
   readonly damage = new Float32Array(MAX);
+  /** Explosive payload damage, baked at spawn from the FULL weapon damage
+   *  chain (tuning × tiers × player mult) so blast honors all of it. */
+  readonly blastDamage = new Float32Array(MAX);
   readonly alive = new Uint8Array(MAX);
   /** Index into the weapons list for projectile spec lookup. */
   readonly weaponRef: (WeaponConfig | null)[] = new Array(MAX).fill(null);
@@ -43,6 +46,9 @@ export class PlayerProjectiles {
         this.velZ[i] = dz * spec.speed;
         this.life[i] = spec.lifetime;
         this.damage[i] = damage;
+        // damage / cfg.damage = the whole effective multiplier chain.
+        const damageChain = weapon.damage > 0 ? damage / weapon.damage : 1;
+        this.blastDamage[i] = spec.explosive ? spec.explosive.damage * damageChain : 0;
         this.weaponRef[i] = weapon;
         return;
       }
@@ -140,8 +146,8 @@ export class PlayerProjectiles {
   private detonateAt(x: number, y: number, z: number, i: number, ctx: CombatContext): void {
     const spec = this.weaponRef[i]!.projectile!;
     if (!spec.explosive) return;
-    const dmg = spec.explosive.damage * ctx.player().stats.damageMult;
-    explodeAt(ctx, x, y, z, spec.explosive.radius, dmg, this.weaponRef[i]!.id);
+    // blastDamage already carries tuning × tiers × player mult from spawn.
+    explodeAt(ctx, x, y, z, spec.explosive.radius, this.blastDamage[i], this.weaponRef[i]!.id);
   }
 
   /** Arccaster: jump to up to `count` nearby enemies at reduced damage. */

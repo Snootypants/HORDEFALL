@@ -18,7 +18,13 @@ export function buyShopItem(sim: Simulation, audio: AudioManager, kind: ShopItem
     audio.play('purchase');
     return true;
   };
-  if (kind === 'ammo') return tryBuy(eco.ammoPrice, () => sim.weapons.refillCurrent());
+  if (kind === 'ammo') {
+    // Refill a gun that actually needs ammo; never charge for a no-op
+    // (melee equipped with full guns, or every reserve already full).
+    const target = sim.weapons.ammoRefillTarget();
+    if (!target) return false;
+    return tryBuy(eco.ammoPrice, () => sim.weapons.refillWeapon(target.id));
+  }
   if (kind === 'health') return tryBuy(eco.healthPrice, () => sim.player.heal(50));
   if (kind === 'armor') return tryBuy(eco.armorPrice, () => sim.player.addArmor(50));
   if (kind.startsWith('unlock:')) {

@@ -53,7 +53,8 @@ export function runDevAction(sim: Simulation, action: DevAction): unknown {
       sim.waves.forcedEventId = 'boss';
       return undefined;
     case 'unlockall':
-      for (const w of sim.weapons.weapons) sim.weapons.unlock(w.id);
+      // Classified as a CHEAT: session-only, never persists to the profile.
+      for (const w of sim.weapons.weapons) sim.weapons.unlock(w.id, false);
       return undefined;
     case 'killall':
       sim.enemies.killAll(true, sim.rng);

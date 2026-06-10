@@ -41,8 +41,7 @@ export function persistRunResults(sim: Simulation, d: SaveDataV2): void {
   });
   d.runHistory.length = Math.min(d.runHistory.length, 20);
 
-  // Weapons unlocked during the run persist to the profile.
-  d.unlocks.weapons = sim.weapons.weapons
-    .filter((w) => sim.weapons.runtime.get(w.id)!.unlocked)
-    .map((w) => w.id);
+  // Only profile-grade unlocks persist (shop purchases + defaults + prior
+  // saves). Dev/tuning unlock cheats and tuning locks never touch this.
+  d.unlocks.weapons = sim.weapons.persistedUnlocks();
 }

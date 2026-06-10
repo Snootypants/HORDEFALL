@@ -9,12 +9,10 @@ import type { InputCommand } from './inputCommand';
 import type { CombatContext } from './combat/context';
 import type { GameBus } from './events';
 import type { Rng } from '../core/Rng';
-import { computeHitDamage } from './combat/damage';
-import { applyOnHitEffects, applyRicochet } from './combat/onHit';
 import { swingMelee } from './combat/melee';
+import { firePellet } from './combat/hitscan';
 import { defaultTuning, type TuningOverrides } from './tuning';
 import { effectiveWeaponStats, type EffectiveWeaponStats } from './weaponStats';
-import { raycastEnemies, hitsWeakPoint } from './enemies/enemyQueries';
 import type { PlayerProjectiles } from './projectiles';
 import { clamp } from '../core/math';
 
@@ -49,12 +47,10 @@ export class WeaponSim {
 
   private readonly bus: GameBus;
   private readonly rng: Rng;
-  private readonly hitIdx: number[] = [];
-  private readonly hitT: number[] = [];
-  private readonly hitHead: boolean[] = [];
-  private readonly barrelT: number[] = [0];
 
   private readonly tuning: TuningOverrides;
+  /** Profile-grade unlocks (defaults + save + shop). Dev/tuning never add here. */
+  private readonly persistentUnlocks = new Set<string>();
 
   constructor(weapons: WeaponConfig[], unlockedIds: string[], bus: GameBus, rng: Rng, tuning: TuningOverrides = defaultTuning()) {
     this.weapons = weapons;
@@ -62,11 +58,13 @@ export class WeaponSim {
     this.rng = rng;
     this.tuning = tuning;
     for (const w of weapons) {
+      const unlocked = w.unlockedByDefault || unlockedIds.includes(w.id);
+      if (unlocked) this.persistentUnlocks.add(w.id);
       this.runtime.set(w.id, {
         mag: w.magSize,
         reserve: w.startingReserve,
         tier: 0,
-        unlocked: w.unlockedByDefault || unlockedIds.includes(w.id),
+        unlocked,
       });
     }
     // Start with the first unlocked GUN; melee is a fallback, not a loadout.
@@ -257,89 +255,9 @@ export class WeaponSim {
         projectiles.spawn(cfg, view.ox, view.oy, view.oz, dx, dy, dz, eff.damage);
         continue;
       }
-      this.firePellet(cfg, eff, view, dx, dy, dz, ctx);
+      firePellet(cfg, eff, view, dx, dy, dz, ctx, this.rng, this.bus);
     }
     this.bloom = clamp(this.bloom + cfg.bloomPerShot, 0, cfg.bloomMaxDeg);
-  }
-
-  /** Resolve one hitscan pellet: world, barrels, then pierce through enemies. */
-  private firePellet(
-    cfg: WeaponConfig,
-    eff: EffectiveWeaponStats,
-    view: FireView,
-    dx: number, dy: number, dz: number,
-    ctx: CombatContext,
-  ): void {
-    const wallHit = ctx.collision.raycast(view.ox, view.oy, view.oz, dx, dy, dz, cfg.range);
-    let maxT = wallHit ? wallHit.t : cfg.range;
-    const wallNx = wallHit?.nx ?? 0;
-    const wallNy = wallHit?.ny ?? 0;
-    const wallNz = wallHit?.nz ?? 0;
-    const hadWall = wallHit !== null;
-
-    const barrelIdx = ctx.barrels.raycast(view.ox, view.oy, view.oz, dx, dy, dz, maxT, this.barrelT);
-    if (barrelIdx >= 0) {
-      ctx.barrels.damage(barrelIdx, eff.damage, ctx.enemies, ctx.bus, ctx.playerPos, ctx.damagePlayer);
-      maxT = Math.min(maxT, this.barrelT[0]);
-    }
-
-    const stats = ctx.player().stats;
-    const pierceMax = 1 + cfg.pierce + stats.pierceBonus;
-    const n = raycastEnemies(ctx.enemies, view.ox, view.oy, view.oz, dx, dy, dz, maxT, this.hitIdx, this.hitT, this.hitHead);
-
-    let lastT = maxT;
-    let hits = 0;
-    for (let h = 0; h < n && hits < pierceMax; h++) {
-      const idx = this.hitIdx[h];
-      const t = this.hitT[h];
-      const isHead = this.hitHead[h];
-      const weakPoint = ctx.enemies.bossIdx === idx && hitsWeakPoint(ctx.enemies, idx, view.ox, view.oy, view.oz, dx, dy, dz);
-      const { damage, isCrit } = computeHitDamage({
-        baseDamage: eff.damage,
-        distance: t,
-        falloffStart: cfg.falloffStart,
-        range: cfg.range,
-        falloffMinMult: cfg.falloffMinMult,
-        isHeadshot: isHead,
-        headshotMult: cfg.headshotMult,
-        damageMult: 1, // player damageMult already in eff.damage
-        critChance: stats.critChance,
-        critMult: stats.critMult,
-        critRoll: this.rng.next(),
-        weakPointMult: weakPoint ? ctx.enemies.configOf(idx).boss!.weakPointMult : undefined,
-      });
-      const result = ctx.enemies.applyDamage(idx, damage, {
-        fromX: view.ox, fromZ: view.oz, isHead, isCrit, byPlayer: true, weaponId: cfg.id,
-      });
-      ctx.stats.damageDealt += result.applied;
-      if (hits === 0) ctx.stats.shotsHit++;
-      if (isHead && result.applied > 0) ctx.stats.headshots++;
-      if (result.killed) ctx.stats.recordKill(cfg.id);
-      const hx = view.ox + dx * t;
-      const hy = view.oy + dy * t;
-      const hz = view.oz + dz * t;
-      if (result.applied > 0) {
-        applyOnHitEffects(ctx, idx, hx, hy, hz, result.applied);
-        if (ctx.player().flags.has('ricochet')) applyRicochet(ctx, idx, hx, hy, hz, result.applied);
-      }
-      lastT = t;
-      hits++;
-      if (result.shielded) break; // shields stop the pellet cold
-    }
-
-    // Tracer to last obstruction; wall impact if nothing soft absorbed it.
-    const endT = hits >= pierceMax ? lastT : maxT;
-    this.bus.emit('tracer', {
-      x0: view.ox, y0: view.oy - 0.12, z0: view.oz,
-      x1: view.ox + dx * endT, y1: view.oy + dy * endT, z1: view.oz + dz * endT,
-      color: cfg.tracerColor,
-    });
-    if (hits === 0 && hadWall) {
-      this.bus.emit('impact', {
-        x: view.ox + dx * maxT, y: view.oy + dy * maxT, z: view.oz + dz * maxT,
-        nx: wallNx, ny: wallNy, nz: wallNz, surface: 'world',
-      });
-    }
   }
 
   /** Ammo pickup: refill a fraction of reserve capacity for ALL weapons. */
@@ -351,16 +269,65 @@ export class WeaponSim {
     }
   }
 
-  /** Shop: buy a full reserve refill for the current weapon. */
-  refillCurrent(): void {
-    const rt = this.state();
-    rt.reserve = this.current.reserveMax;
+  /**
+   * Shop: which gun an ammo purchase refills — the current gun if its
+   * reserve isn't full, else the first unlocked gun that needs ammo, else
+   * null (purchase must be refused). Melee is never a target.
+   */
+  ammoRefillTarget(): WeaponConfig | null {
+    const needsAmmo = (w: WeaponConfig): boolean =>
+      w.kind !== 'melee' && this.runtime.get(w.id)!.unlocked && this.runtime.get(w.id)!.reserve < w.reserveMax;
+    if (needsAmmo(this.current)) return this.current;
+    return this.weapons.find(needsAmmo) ?? null;
   }
 
-  unlock(id: string): boolean {
+  /** Shop: fill one weapon's reserve to max. */
+  refillWeapon(id: string): void {
+    const cfg = this.weapons.find((w) => w.id === id);
     const rt = this.runtime.get(id);
-    if (!rt || rt.unlocked) return false;
+    if (cfg && rt) rt.reserve = cfg.reserveMax;
+  }
+
+  /**
+   * Unlock a weapon. `persist: true` (shop/progression) records it for the
+   * profile; `persist: false` (dev/tuning cheats) is session-only.
+   */
+  unlock(id: string, persist = true): boolean {
+    const rt = this.runtime.get(id);
+    if (!rt) return false;
+    if (persist) this.persistentUnlocks.add(id);
+    if (rt.unlocked) return false;
     rt.unlocked = true;
+    return true;
+  }
+
+  /** Unlocks that belong in the player profile (never tuning/dev cheats). */
+  persistedUnlocks(): string[] {
+    return this.weapons.filter((w) => this.persistentUnlocks.has(w.id)).map((w) => w.id);
+  }
+
+  /**
+   * Tuning-panel lock toggle (session-only; never touches the profile set).
+   * Invariants: the melee fallback stays unlocked, the player always keeps
+   * at least one usable weapon, and locking the held weapon switches away
+   * through the normal path. Returns false when the change is rejected.
+   */
+  setUnlocked(id: string, unlocked: boolean): boolean {
+    const cfg = this.weapons.find((w) => w.id === id);
+    const rt = this.runtime.get(id);
+    if (!cfg || !rt) return false;
+    if (unlocked) {
+      rt.unlocked = true;
+      return true;
+    }
+    if (cfg.kind === 'melee') return false; // the fallback is not lockable
+    const usableAfter = this.weapons.filter((w) => w.id !== id && this.runtime.get(w.id)!.unlocked);
+    if (usableAfter.length === 0) return false;
+    rt.unlocked = false;
+    if (this.currentId === id) {
+      const fallback = usableAfter.find((w) => w.kind !== 'melee') ?? usableAfter[0];
+      this.equip(fallback.id);
+    }
     return true;
   }
 
