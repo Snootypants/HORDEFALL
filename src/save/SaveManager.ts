@@ -29,6 +29,8 @@ export interface GraphicsSettings {
   renderScale: number;
   maxDecals: number;
   maxCorpses: number;
+  /** Live particle budget for effects (honored by ParticleSystem). */
+  maxParticles: number;
 }
 
 export interface AudioSettings {
@@ -105,6 +107,7 @@ export function defaultSaveData(): SaveDataV2 {
         renderScale: 1.0,
         maxDecals: 128,
         maxCorpses: 40,
+        maxParticles: 2048,
       },
       audio: {
         master: 0.8,

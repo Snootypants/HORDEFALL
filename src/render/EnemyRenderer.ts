@@ -92,9 +92,20 @@ export class EnemyRenderer {
       const dz = mgr.posZ[i] - camZ;
       const near = dx * dx + dz * dz < this.lodDist2;
 
+      // Corpses topple-squash over ~0.45s, linger flat, sink out at the end.
       const dying = mgr.state[i] === EState.Dying;
-      const deathFrac = dying ? Math.max(0, mgr.deathTimer[i] / 0.9) : 1;
-      const s = mgr.scale[i] * cfg.height * (dying ? deathFrac : 1);
+      let sy = 1;
+      let sxz = 1;
+      if (dying) {
+        const elapsed = Math.max(0, mgr.corpseTtlSec - mgr.deathTimer[i]);
+        const fall = Math.min(1, elapsed / 0.45);
+        sy = 1 - fall * 0.82;
+        sxz = 1 + fall * 0.25;
+        const fadeOut = Math.min(1, mgr.deathTimer[i] / 0.6);
+        sy *= fadeOut;
+        sxz *= Math.max(0.2, fadeOut);
+      }
+      const s = mgr.scale[i] * cfg.height;
 
       // Walk-cycle bob + windup lean (near instances only)
       let bobY = 0;
@@ -105,9 +116,9 @@ export class EnemyRenderer {
         if (mgr.state[i] === EState.Fuse) bobY += Math.sin(time * 40) * 0.06;
       }
 
-      dummy.position.set(mgr.posX[i], mgr.posY[i] + s * 0.5 + bobY - (dying ? (1 - deathFrac) * s * 0.4 : 0), mgr.posZ[i]);
+      dummy.position.set(mgr.posX[i], mgr.posY[i] + s * sy * 0.5 + bobY, mgr.posZ[i]);
       dummy.rotation.set(lean, mgr.yaw[i], 0);
-      dummy.scale.setScalar(s);
+      dummy.scale.set(s * sxz, Math.max(0.01, s * sy), s * sxz);
       dummy.updateMatrix();
       mesh.setMatrixAt(slot, dummy.matrix);
 
@@ -121,6 +132,7 @@ export class EnemyRenderer {
       }
       if (mgr.hitFlash[i] > 0) baseColorScratch.lerp(whiteColor, mgr.hitFlash[i]);
       if (mgr.state[i] === EState.Fuse) baseColorScratch.lerp(fuseColor, 0.5 + Math.sin(time * 30) * 0.5);
+      if (dying) baseColorScratch.lerp(corpseColor, 0.55); // corpses read as dead
       mesh.setColorAt(slot, baseColorScratch);
 
       // Warden shield visual
@@ -165,3 +177,4 @@ const countsScratch = new Uint16Array(16);
 const eliteColor = new THREE.Color(0xffd75e);
 const whiteColor = new THREE.Color(0xffffff);
 const fuseColor = new THREE.Color(0xff3300);
+const corpseColor = new THREE.Color(0x1a1216);

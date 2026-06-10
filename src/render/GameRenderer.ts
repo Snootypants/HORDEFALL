@@ -61,6 +61,7 @@ export class GameRenderer {
     this.particles = new ParticleSystem(this.core.scene);
     this.particles.enabled = settings.particles;
     this.particles.density = settings.quality === 'low' ? 0.4 : settings.quality === 'medium' ? 0.7 : 1;
+    this.particles.setCapacity(settings.maxParticles);
     this.tracers = new TracerSystem(this.core.scene);
     this.decals = new DecalSystem(this.core.scene, settings.maxDecals);
     this.projectileRenderer = new ProjectileRenderer(this.core.scene);
@@ -134,6 +135,7 @@ export class GameRenderer {
     this.core.applySettings(settings);
     this.particles.enabled = settings.particles;
     this.particles.density = settings.quality === 'low' ? 0.4 : settings.quality === 'medium' ? 0.7 : 1;
+    this.particles.setCapacity(settings.maxParticles);
     this.decals.setCapacity(settings.maxDecals);
   }
 

@@ -5,16 +5,17 @@
  */
 
 import { el, button, settingRow, slider, checkbox, select } from '../dom';
+import { playUiSound } from '../uiSound';
 import type { Screen } from '../UIManager';
 import type { GameApi } from './api';
 import { ACTION_LABELS, DEFAULT_KEYBINDS, type GameAction } from '../../input/bindings';
 import type { GraphicsQuality } from '../../save/SaveManager';
 
-const QUALITY_PRESETS: Record<GraphicsQuality, { shadows: boolean; particles: boolean; postProcessing: boolean; renderScale: number; maxDecals: number }> = {
-  low: { shadows: false, particles: false, postProcessing: false, renderScale: 0.75, maxDecals: 32 },
-  medium: { shadows: false, particles: true, postProcessing: true, renderScale: 0.9, maxDecals: 64 },
-  high: { shadows: true, particles: true, postProcessing: true, renderScale: 1.0, maxDecals: 128 },
-  ultra: { shadows: true, particles: true, postProcessing: true, renderScale: 1.0, maxDecals: 256 },
+const QUALITY_PRESETS: Record<GraphicsQuality, { shadows: boolean; particles: boolean; postProcessing: boolean; renderScale: number; maxDecals: number; maxCorpses: number; maxParticles: number }> = {
+  low: { shadows: false, particles: false, postProcessing: false, renderScale: 0.75, maxDecals: 32, maxCorpses: 10, maxParticles: 512 },
+  medium: { shadows: false, particles: true, postProcessing: true, renderScale: 0.9, maxDecals: 64, maxCorpses: 25, maxParticles: 1024 },
+  high: { shadows: true, particles: true, postProcessing: true, renderScale: 1.0, maxDecals: 128, maxCorpses: 40, maxParticles: 2048 },
+  ultra: { shadows: true, particles: true, postProcessing: true, renderScale: 1.0, maxDecals: 256, maxCorpses: 80, maxParticles: 4096 },
 };
 
 export function createSettingsMenu(api: GameApi): Screen {
@@ -29,9 +30,11 @@ export function createSettingsMenu(api: GameApi): Screen {
   for (const name of tabNames) {
     const tab = el('button', { className: 'tab', text: name.toUpperCase() });
     tab.addEventListener('click', () => {
+      playUiSound('click');
       activeTab = name;
       render();
     });
+    tab.addEventListener('pointerenter', () => playUiSound('hover'));
     tabs.appendChild(tab);
     tabButtons.set(name, tab);
   }
@@ -74,6 +77,8 @@ export function createSettingsMenu(api: GameApi): Screen {
         settingRow('Post-processing', checkbox(g.postProcessing, (v) => { g.postProcessing = v; api.applySettings(); })),
         settingRow('Render scale', slider(g.renderScale, 0.5, 1.25, 0.05, (v) => { g.renderScale = v; api.applySettings(); })),
         settingRow('Max decals', slider(g.maxDecals, 0, 256, 16, (v) => { g.maxDecals = v; api.applySettings(); })),
+        settingRow('Max corpses', slider(g.maxCorpses, 0, 100, 5, (v) => { g.maxCorpses = v; api.applySettings(); })),
+        settingRow('Max particles', slider(g.maxParticles, 256, 4096, 256, (v) => { g.maxParticles = v; api.applySettings(); })),
         el('div', { className: 'muted', text: 'Shadow toggles apply fully on next run.' }),
       );
     } else if (activeTab === 'audio') {
@@ -91,6 +96,7 @@ export function createSettingsMenu(api: GameApi): Screen {
       for (const action of Object.keys(ACTION_LABELS) as GameAction[]) {
         const bindBtn = el('button', { className: 'bind-btn', text: prettyKey(s.keybinds[action]) });
         bindBtn.addEventListener('click', () => {
+          playUiSound('click');
           bindBtn.classList.add('listening');
           bindBtn.textContent = 'PRESS KEY…';
           api.input.captureNextKey((code) => {

@@ -26,6 +26,14 @@ export class ParticleSystem {
   enabled = true;
   /** Quality scale 0..1: multiplies burst counts. */
   density = 1;
+  /** Live-particle budget (maxParticles setting). Bursts recycle within it. */
+  private capacity = MAX;
+
+  /** Clamp to [64, MAX] so a bad save can't kill effects entirely. */
+  setCapacity(n: number): void {
+    this.capacity = Math.min(MAX, Math.max(64, Math.round(n)));
+    if (this.cursor >= this.capacity) this.cursor = 0;
+  }
 
   private readonly points: THREE.Points;
   private readonly geometry: THREE.BufferGeometry;
@@ -64,7 +72,7 @@ export class ParticleSystem {
     const n = Math.max(1, Math.round(count * this.density));
     for (let k = 0; k < n; k++) {
       const i = this.cursor;
-      this.cursor = (this.cursor + 1) % MAX;
+      this.cursor = (this.cursor + 1) % this.capacity;
       if (this.life[i] <= 0) this.activeCount++;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);

@@ -17,6 +17,7 @@ import { AudioManager } from '../audio/AudioManager';
 import { wireAudio } from '../audio/audioWiring';
 import { InputManager } from '../input/InputManager';
 import { UIManager, type ScreenName } from '../ui/UIManager';
+import { setUiSoundHook } from '../ui/uiSound';
 import { Hud } from '../ui/hud';
 import { Minimap } from '../ui/Minimap';
 import { DamageNumbers } from '../ui/DamageNumbers';
@@ -87,6 +88,7 @@ export class Game implements GameApi {
     this.devConsole.print(text, report.errors.length ? 'log-error' : '');
 
     registerScreens(this);
+    setUiSoundHook((kind) => this.audio.play(kind === 'click' ? 'ui-click' : 'ui-hover', kind === 'click' ? 0.9 : 0.5, kind === 'hover' ? 60 : 0));
     this.ui.show('main-menu');
     this.audioOnFirstGesture();
     this.input.onPointerLockChange((locked) => {
@@ -118,6 +120,7 @@ export class Game implements GameApi {
       seed: finalSeed,
       unlockedWeapons: this.saveData.unlocks.weapons,
     });
+    this.sim.enemies.setCorpseBudget(this.saveData.settings.graphics.maxCorpses);
     this.renderer = new GameRenderer(this.canvas, this.sim, this.saveData.settings.graphics, this.saveData.settings.fov);
     this.audioUnwire = wireAudio(this.sim.bus, this.audio);
     this.hud.wire(this.sim);
@@ -317,6 +320,7 @@ export class Game implements GameApi {
     this.saveManager.save(this.saveData);
     this.audio.applySettings(this.saveData.settings.audio);
     this.applyInputSettings();
+    this.sim?.enemies.setCorpseBudget(this.saveData.settings.graphics.maxCorpses);
     if (this.renderer) {
       this.renderer.applySettings(this.saveData.settings.graphics);
       this.renderer.core.setFov(this.saveData.settings.fov);

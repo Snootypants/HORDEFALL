@@ -1,7 +1,10 @@
 /**
  * Tiny DOM helpers — the UI layer builds elements imperatively (no framework)
- * and these keep that terse and consistent.
+ * and these keep that terse and consistent. Buttons route click/hover sounds
+ * through the central uiSound hook.
  */
+
+import { playUiSound } from './uiSound';
 
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -21,7 +24,11 @@ export function button(label: string, onClick: () => void, className = 'btn', no
   const b = el('button', { className });
   b.appendChild(document.createTextNode(label));
   if (note) b.appendChild(el('span', { className: 'btn-note', text: note }));
-  b.addEventListener('click', onClick);
+  b.addEventListener('click', () => {
+    playUiSound('click');
+    onClick();
+  });
+  b.addEventListener('pointerenter', () => playUiSound('hover'));
   return b;
 }
 

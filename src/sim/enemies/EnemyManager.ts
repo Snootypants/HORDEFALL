@@ -16,6 +16,7 @@ import { SpatialHashGrid } from '../../core/SpatialHashGrid';
 import { StatusStore } from '../status';
 import { STATUS_EFFECTS, STATUS_INTERACTIONS } from '../../config/statusEffects';
 import { dist2XZ, wrapAngle } from '../../core/math';
+import { enforceCorpseBudget, evictOldestCorpse } from './corpses';
 
 export const MAX_ENEMIES = 1024;
 
@@ -100,6 +101,11 @@ export class EnemyManager {
   aiThinksThisFrame = 0;
   highWater = 0;
 
+  /** How long corpses linger before the slot is reclaimed. */
+  corpseTtlSec = 6;
+  /** Max simultaneous corpses (graphics setting); oldest evicted first. */
+  corpseBudget = 40;
+
   private readonly freeList: number[] = [];
   spawnMinionFn: ((enemyId: string, x: number, z: number, wave: number) => void) | null = null;
 
@@ -125,6 +131,8 @@ export class EnemyManager {
       idx = this.freeList.pop()!;
     } else if (this.highWater < MAX_ENEMIES) {
       idx = this.highWater++;
+    } else if (evictOldestCorpse(this)) {
+      idx = this.freeList.pop()!; // live spawns outrank corpses
     } else {
       return -1; // horde is full
     }
@@ -270,9 +278,10 @@ export class EnemyManager {
     }
 
     this.state[idx] = EState.Dying;
-    this.deathTimer[idx] = 0.9;
+    this.deathTimer[idx] = this.corpseTtlSec;
     this.hp[idx] = 0;
     this.grid.remove(idx);
+    enforceCorpseBudget(this);
 
     const currency =
       Math.round(cfg.currencyMin + (rng ? rng.next() : 0.5) * (cfg.currencyMax - cfg.currencyMin)) *
@@ -299,6 +308,11 @@ export class EnemyManager {
       isBoss,
       killedByPlayer: byPlayer,
     });
+  }
+
+  setCorpseBudget(n: number): void {
+    this.corpseBudget = Math.max(0, Math.round(n));
+    enforceCorpseBudget(this);
   }
 
   /** Return a slot to the free list (after the death animation). */

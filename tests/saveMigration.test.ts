@@ -57,6 +57,18 @@ describe('SaveManager', () => {
     expect(data.settings.mouseSensitivity).toBeCloseTo(1.4);
   });
 
+  test('v2 saves missing newer graphics fields are patched with defaults', () => {
+    const storage = new MemoryStorage();
+    const sm = new SaveManager(storage);
+    const data = sm.load();
+    // Simulate a save written before maxParticles existed.
+    const raw = JSON.parse(JSON.stringify(data)) as Record<string, { graphics: Record<string, unknown> }>;
+    delete raw.settings.graphics.maxParticles;
+    storage.setItem(SaveManager.KEY, JSON.stringify(raw));
+    const patched = new SaveManager(storage).load();
+    expect(patched.settings.graphics.maxParticles).toBeGreaterThan(0);
+  });
+
   test('migrateSave is a pure function usable on raw objects', () => {
     const out = migrateSave(V1_SAVE);
     expect(out).not.toBeNull();

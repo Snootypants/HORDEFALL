@@ -4,6 +4,7 @@
  */
 
 import { el, button, formatTime } from '../dom';
+import { playUiSound } from '../uiSound';
 import type { Screen } from '../UIManager';
 import type { GameApi } from './api';
 import { UPGRADES } from '../../config/upgrades';
@@ -73,7 +74,11 @@ export function createUpgradeScreen(api: GameApi): Screen {
             el('div', { className: 'u-desc', text: u.description }),
             el('div', { className: 'u-stacks', text: `${u.rarity.toUpperCase()} · ${have}/${u.maxStacks} owned` }),
           ]);
-          card.addEventListener('click', () => api.applyUpgradeChoice(u.id));
+          card.addEventListener('click', () => {
+            playUiSound('click');
+            api.applyUpgradeChoice(u.id);
+          });
+          card.addEventListener('pointerenter', () => playUiSound('hover'));
           return card;
         }),
       );
