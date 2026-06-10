@@ -1,7 +1,16 @@
 /**
- * Proof that a REAL multi-wave run executes headlessly: 10 waves of the
- * actual Simulation in Node — spawning, AI, combat, drops, progression,
- * boss waves, and end-of-run persistence — with no renderer, DOM, or audio.
+ * Headless wave-system proofs (no renderer, DOM, or audio):
+ *
+ * 1. A 10-wave HARNESS run: real Simulation with real spawning/AI/combat/
+ *    drops/progression/persistence and aimed scripted-input kills — but
+ *    waves are force-cleared via killAll a few seconds after going active
+ *    and breaks are skipped. This is NOT an organic playthrough; the
+ *    force-clears keep 10 waves fast and deterministic while still
+ *    exercising every system (wave generation, boss flow, rewards, drops,
+ *    end-of-run save). Organic combat is proven separately below.
+ *
+ * 2. An ORGANIC single-wave clear: every wave-1 enemy dies to aimed weapon
+ *    fire through the real combat path — no force-kills, no fallbacks.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -9,7 +18,7 @@ import { Simulation } from '../src/sim/Simulation';
 import { MAPS } from '../src/config/maps';
 import { SaveManager, defaultSaveData, type StorageLike } from '../src/save/SaveManager';
 import { persistRunResults } from '../src/game/persistRun';
-import { driveRun } from './helpers/simHarness';
+import { driveRun, driveOrganicWave } from './helpers/simHarness';
 
 class MemoryStorage implements StorageLike {
   private readonly map = new Map<string, string>();
@@ -18,8 +27,8 @@ class MemoryStorage implements StorageLike {
   removeItem(k: string): void { this.map.delete(k); }
 }
 
-describe('headless 10-wave run', () => {
-  it('plays 10 real waves: spawns, combat, rewards, boss, persistence', () => {
+describe('headless 10-wave harness run (force-cleared waves)', () => {
+  it('drives 10 waves through every sim system, then persists the run', () => {
     const sim = new Simulation({ mapConfig: MAPS[0], seed: 20260610 });
     sim.startRun();
 
@@ -28,13 +37,13 @@ describe('headless 10-wave run', () => {
 
     const result = driveRun(sim, 10);
 
-    // The run truly progressed through 10 waves.
+    // The run progressed through 10 waves (harness-cleared, see header).
     expect(result.wavesCleared).toBeGreaterThanOrEqual(10);
     expect(sim.waves.wave).toBeGreaterThanOrEqual(10);
     expect(sim.time).toBeGreaterThan(30);
 
-    // Real combat happened: weapon-path kills (combat/onHit → recordKill),
-    // not just the wave-clear fallback. kills[] also counts fallback kills,
+    // Real weapon-path combat happened alongside the force-clears
+    // (combat/onHit → recordKill); kills[] also counts force-clear kills,
     // so it is a superset of stats.kills.
     expect(sim.stats.kills).toBeGreaterThan(20);
     expect(kills.length).toBeGreaterThanOrEqual(sim.stats.kills);
@@ -60,5 +69,26 @@ describe('headless 10-wave run', () => {
     expect(reloaded.bestWave).toBe(sim.stats.wavesSurvived);
     expect(reloaded.runHistory).toHaveLength(1);
     expect(reloaded.runHistory[0].seed).toBe(20260610);
+  });
+});
+
+describe('headless organic wave clear (no force-kills)', () => {
+  it('clears wave 1 entirely through aimed weapon fire', () => {
+    const sim = new Simulation({ mapConfig: MAPS[0], seed: 808 });
+    sim.startRun();
+    let forced = 0;
+    const origKillAll = sim.enemies.killAll.bind(sim.enemies);
+    sim.enemies.killAll = ((...args: Parameters<typeof origKillAll>) => {
+      forced++;
+      return origKillAll(...args);
+    }) as typeof origKillAll;
+
+    const result = driveOrganicWave(sim);
+
+    expect(result.cleared).toBe(true);
+    expect(forced).toBe(0); // nothing was force-killed
+    expect(sim.stats.kills).toBeGreaterThan(5); // every kill via weapons
+    expect(sim.stats.shotsHit).toBeGreaterThan(5);
+    expect(sim.waves.wave).toBe(1);
   });
 });

@@ -30,6 +30,11 @@ export class Rng {
     this.state = this.seed === 0 ? 0x9e3779b9 : this.seed;
   }
 
+  /** Read-only view of the internal state — determinism checksums only. */
+  get stateSnapshot(): number {
+    return this.state;
+  }
+
   /** Uniform float in [0, 1). */
   next(): number {
     this.state = (this.state + 0x6d2b79f5) >>> 0;

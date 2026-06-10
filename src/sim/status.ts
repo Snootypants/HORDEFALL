@@ -35,6 +35,19 @@ export class StatusStore {
   }
 
   /**
+   * Deterministic fold of one entity's status state (remaining + stacks per
+   * effect, position-weighted so swapped effects differ) — for checksums.
+   */
+  checksumOf(entity: number): number {
+    let h = 0;
+    const base = entity * this.configs.length;
+    for (let s = 0; s < this.configs.length; s++) {
+      h += (s + 1) * (this.remaining[base + s] * 31 + this.stacks[base + s]);
+    }
+    return h;
+  }
+
+  /**
    * Apply a status. If a configured interaction partner is already active,
    * both are consumed and the reaction (with bonus damage) is returned.
    */

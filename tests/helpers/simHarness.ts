@@ -20,26 +20,70 @@ function fnv1a(s: string): string {
 }
 
 /**
- * Checksum of everything gameplay-visible. String(number) round-trips float64
- * exactly, so any drift in any included field changes the hash.
+ * Simulation state checksum. String(number) round-trips float64 exactly, so
+ * any drift in any included field changes the hash.
+ *
+ * COVERAGE: time/credits/revives, full player pose+vitals, EVERY weapon's
+ * runtime (mag/reserve/tier/unlocked) + reload/cooldown/bloom, progression
+ * (level/xp/score/pending/combo/streak) + upgrade stacks, wave director
+ * public state incl. queued-spawn count, master RNG state, enemies (pos/hp/
+ * state/yaw + per-entity status fold), both projectile pools, pickups,
+ * barrels, and companion drones/turrets.
+ *
+ * KNOWN LIMITATIONS (documented, not hash-covered): subsystem RNG forks
+ * (weapons/waves/AI hold private Rng instances — only the master sim.rng is
+ * included; fork divergence still surfaces through the state it perturbs),
+ * the wave queue CONTENTS (only its count is public), and Progression's
+ * private lastKillTime (combo decay surfaces via comboMult on later ticks).
+ * This is checksum-grade determinism evidence, not a replay-grade full
+ * state serialization.
  */
 export function simChecksum(sim: Simulation): string {
   const parts: (number | string)[] = [
-    sim.time, sim.credits,
+    sim.time, sim.credits, sim.revivesLeft,
     sim.player.x, sim.player.y, sim.player.z, sim.player.yaw, sim.player.pitch,
     sim.player.health, sim.player.armor, sim.player.stamina, sim.player.alive ? 1 : 0,
-    sim.revivesLeft,
     sim.progression.level, sim.progression.xp, sim.progression.score,
-    sim.waves.wave, sim.waves.state, sim.waves.bossNumber,
-    sim.weapons.currentId, sim.weapons.state().mag, sim.weapons.state().reserve,
+    sim.progression.pendingLevelUps, sim.progression.comboMult, sim.progression.killStreak,
+    sim.waves.wave, sim.waves.state, sim.waves.bossNumber, sim.waves.breakLeft,
+    sim.waves.queuedSpawns, sim.waves.ammoDropMult, sim.waves.fogDensityMult,
+    sim.rng.stateSnapshot,
+    sim.weapons.currentId, sim.weapons.reloading ? 1 : 0, sim.weapons.reloadLeft,
+    sim.weapons.cooldown, sim.weapons.bloom,
     sim.stats.kills, sim.stats.shotsFired, sim.stats.damageDealt, sim.stats.damageTaken,
     sim.enemies.aliveCount,
   ];
+  // Every weapon's runtime, not just the current one.
+  for (const w of sim.weapons.weapons) {
+    const rt = sim.weapons.runtime.get(w.id)!;
+    parts.push(w.id, rt.mag, rt.reserve, rt.tier, rt.unlocked ? 1 : 0);
+  }
+  for (const [id, count] of [...sim.upgradeStacks.entries()].sort()) parts.push(id, count);
+
   const e = sim.enemies;
   for (let i = 0; i < e.highWater; i++) {
     if (!e.aliveFlags[i]) continue;
-    parts.push(i, e.posX[i], e.posZ[i], e.hp[i], e.state[i]);
+    parts.push(i, e.posX[i], e.posZ[i], e.hp[i], e.state[i], e.yaw[i], e.status.checksumOf(i));
   }
+  const pp = sim.playerProjectiles;
+  for (let i = 0; i < pp.alive.length; i++) {
+    if (!pp.alive[i]) continue;
+    parts.push('pp', i, pp.posX[i], pp.posY[i], pp.posZ[i], pp.damage[i], pp.blastDamage[i], pp.life[i]);
+  }
+  const ep = sim.enemyProjectiles;
+  for (let i = 0; i < ep.alive.length; i++) {
+    if (!ep.alive[i]) continue;
+    parts.push('ep', i, ep.posX[i], ep.posY[i], ep.posZ[i], ep.damage[i], ep.life[i]);
+  }
+  const pk = sim.pickups;
+  for (let i = 0; i < pk.alive.length; i++) {
+    if (!pk.alive[i]) continue;
+    parts.push('pk', i, pk.posX[i], pk.posZ[i], pk.kindIdx[i], pk.life[i]);
+  }
+  const b = sim.barrels;
+  for (let i = 0; i < b.count; i++) parts.push('b', i, b.alive[i], b.hp[i]);
+  for (const d of sim.companions.drones) parts.push('d', d.x, d.y, d.z, d.fireLeft, d.orbitPhase);
+  for (const t of sim.companions.turrets) parts.push('t', t.x, t.z, t.yaw, t.fireLeft, t.active ? 1 : 0);
   return fnv1a(parts.join('|'));
 }
 
@@ -106,9 +150,32 @@ function aimAtNearestEnemy(sim: Simulation, cmd: InputCommand): boolean {
 }
 
 /**
- * Drive a real run: scripted input every tick; breaks are skipped and waves
- * are force-cleared via the real kill path (killAll → rewards/XP/drops) a few
- * seconds after they go active. Fully deterministic for a given seed.
+ * Organic combat: aimed scripted fire only — no force-kills, no break/wave
+ * manipulation. Returns whether wave 1 was fully cleared by weapon fire.
+ */
+export function driveOrganicWave(sim: Simulation, maxTicks = 30_000): { cleared: boolean; ticks: number } {
+  const DT = 1 / 60;
+  const cmd = neutralInput();
+  let cleared = false;
+  sim.bus.on('wave:cleared', (e) => { if (e.wave === 1) cleared = true; });
+  let tick = 0;
+  for (; tick < maxTicks && !cleared; tick++) {
+    scriptedCommand(tick, cmd);
+    if (aimAtNearestEnemy(sim, cmd)) {
+      cmd.fire = true;
+      cmd.firePressed = tick % 8 === 0;
+    }
+    sim.tick(DT, cmd);
+  }
+  return { cleared, ticks: tick };
+}
+
+/**
+ * HARNESS run (not an organic playthrough): scripted aimed input every tick,
+ * but breaks are skipped and waves are force-cleared via the real kill path
+ * (killAll → rewards/XP/drops) a few seconds after going active. This keeps
+ * a 10-wave pass fast and deterministic while still ticking every system;
+ * organic combat is proven separately by driveOrganicWave.
  */
 export function driveRun(sim: Simulation, targetWaves: number, maxTicks = 90_000): DriveResult {
   const DT = 1 / 60;

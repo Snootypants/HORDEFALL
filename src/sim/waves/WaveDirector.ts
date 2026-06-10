@@ -90,6 +90,11 @@ export class WaveDirector {
     if (this.state === 'break') this.breakLeft = 0.01;
   }
 
+  /** Spawns still queued this wave (read-only; checksums/debug). */
+  get queuedSpawns(): number {
+    return this.queue.length;
+  }
+
   /** Dev: jump straight to a given wave number on the next break tick. */
   jumpToWave(wave: number): void {
     this.wave = Math.max(0, wave - 1);
