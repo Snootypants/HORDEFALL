@@ -44,7 +44,7 @@ export interface DriveResult {
  * so scripted fire produces real hitscan kills through combat/onHit. Pure
  * function of deterministic sim state → still deterministic.
  */
-function aimAtNearestEnemy(sim: Simulation, cmd: InputCommand): boolean {
+export function aimAtNearestEnemy(sim: Simulation, cmd: InputCommand): boolean {
   const e = sim.enemies;
   const p = sim.player;
   let best = -1;
