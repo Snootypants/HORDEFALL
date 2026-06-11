@@ -57,6 +57,17 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   expect(running.drawCalls).toBeGreaterThan(0);
   expect(running.triangles).toBeGreaterThan(100);
 
+  // Minimap is actually drawing (fixed north-up arena map, not blank).
+  const minimapPixels = await page.evaluate(() => {
+    const c = document.getElementById('minimap') as HTMLCanvasElement;
+    if (!c) return -1;
+    const data = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    let opaque = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) opaque++;
+    return opaque;
+  });
+  expect(minimapPixels).toBeGreaterThan(500);
+
   // --- Pause menu over the live run
   await page.keyboard.press('Escape');
   await expect(screen.locator('.heading', { hasText: 'Paused' })).toBeVisible();

@@ -1,13 +1,15 @@
 /**
- * Canvas radar: rotates with the player, shows enemies by role color,
+ * Fixed north-up full-arena minimap. The map NEVER rotates: world positions
+ * project through minimapMath, the player marker moves around the map and
+ * its arrow alone rotates to show facing. Shows enemies by role color,
  * pickups, barrels, the boss, and world obstacles as faint blocks.
  */
 
 import type { Simulation } from '../sim/Simulation';
 import { EState } from '../sim/enemies/EnemyManager';
+import { worldToMapX, worldToMapY, playerArrowAngle } from './minimapMath';
 
 const SIZE = 168;
-const RANGE = 55; // world units shown edge-to-edge/2
 
 export class Minimap {
   private readonly canvas: HTMLCanvasElement;
@@ -31,44 +33,28 @@ export class Minimap {
 
   update(sim: Simulation): void {
     const g = this.ctx;
-    const half = SIZE / 2;
-    const px = sim.player.x;
-    const pz = sim.player.z;
-    const yaw = sim.player.yaw;
-    const scale = half / RANGE;
+    const half = sim.map.config.size / 2;
+    const mx = (wx: number): number => worldToMapX(wx, half, SIZE);
+    const my = (wz: number): number => worldToMapY(wz, half, SIZE);
 
     g.clearRect(0, 0, SIZE, SIZE);
-
-    // Clip to a soft circle
-    g.save();
-    g.beginPath();
-    g.arc(half, half, half - 2, 0, Math.PI * 2);
-    g.clip();
-
-    g.translate(half, half);
-    g.rotate(-yaw); // wait: rotate map opposite to yaw so forward is up
-    g.rotate(Math.PI); // forward (-Z) points up
+    g.fillStyle = 'rgba(10,12,14,0.55)';
+    g.fillRect(0, 0, SIZE, SIZE);
 
     const dot = (wx: number, wz: number, r: number, color: string): void => {
-      const dx = (wx - px) * scale;
-      const dz = (wz - pz) * scale;
-      if (dx * dx + dz * dz > half * half) return;
       g.fillStyle = color;
       g.beginPath();
-      g.arc(dx, dz, r, 0, Math.PI * 2);
+      g.arc(mx(wx), my(wz), r, 0, Math.PI * 2);
       g.fill();
     };
 
-    // Obstacles as faint squares
-    g.fillStyle = 'rgba(232,222,210,0.10)';
+    // Obstacles as faint world-fixed blocks (platforms slightly brighter).
     for (const b of sim.map.boxes) {
       if (b.kind === 'wall') continue;
-      const cx = ((b.minX + b.maxX) / 2 - px) * scale;
-      const cz = ((b.minZ + b.maxZ) / 2 - pz) * scale;
-      if (cx * cx + cz * cz > half * half) continue;
-      const w = Math.max(2, (b.maxX - b.minX) * scale);
-      const d = Math.max(2, (b.maxZ - b.minZ) * scale);
-      g.fillRect(cx - w / 2, cz - d / 2, w, d);
+      g.fillStyle = b.kind === 'platform' ? 'rgba(232,222,210,0.20)' : 'rgba(232,222,210,0.10)';
+      const x0 = mx(b.minX);
+      const y0 = my(b.minZ);
+      g.fillRect(x0, y0, Math.max(2, mx(b.maxX) - x0), Math.max(2, my(b.maxZ) - y0));
     }
 
     // Barrels
@@ -94,11 +80,10 @@ export class Minimap {
       );
     }
 
-    g.restore();
-
-    // Player arrow (always center, pointing up)
+    // Player arrow at world position; ONLY the arrow rotates with yaw.
     g.save();
-    g.translate(half, half);
+    g.translate(mx(sim.player.x), my(sim.player.z));
+    g.rotate(playerArrowAngle(sim.player.yaw));
     g.fillStyle = '#e8ded2';
     g.beginPath();
     g.moveTo(0, -6);
@@ -108,11 +93,9 @@ export class Minimap {
     g.fill();
     g.restore();
 
-    // Ring
+    // Arena border
     g.strokeStyle = 'rgba(255,122,46,0.4)';
     g.lineWidth = 1;
-    g.beginPath();
-    g.arc(half, half, half - 2, 0, Math.PI * 2);
-    g.stroke();
+    g.strokeRect(1, 1, SIZE - 2, SIZE - 2);
   }
 }
