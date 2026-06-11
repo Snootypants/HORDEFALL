@@ -20,7 +20,7 @@ test('record → export → view: transport controls drive a verified replay', a
   const manualBtn = page.locator('.screen:visible').getByRole('button', { name: /UNDERSTOOD/i });
   if (await manualBtn.isVisible({ timeout: 3000 }).catch(() => false)) await manualBtn.click();
   await expect(page.locator('#hud')).toBeVisible();
-  await page.waitForTimeout(2000); // ~120 recorded ticks of real gameplay
+  await page.waitForTimeout(5000); // ~300 recorded ticks of real gameplay
 
   const replayJson = await page.evaluate(() => (window as any).HORDEFALL.exportReplay() as string);
   expect(replayJson).toBeTruthy();
@@ -39,18 +39,16 @@ test('record → export → view: transport controls drive a verified replay', a
   const tick = async (): Promise<number> =>
     parseInt((await status.textContent())!.match(/tick (\d+)\//)![1], 10);
 
-  // Play advances…
+  // Play advances… (poll, then pause IMMEDIATELY so the replay can't finish)
   await page.getByRole('button', { name: '▶ Play' }).click();
-  await page.waitForTimeout(700);
-  const playing = await tick();
-  expect(playing).toBeGreaterThan(10);
-
-  // …pause holds…
+  await expect.poll(tick, { timeout: 5000 }).toBeGreaterThan(10);
   await page.getByRole('button', { name: '⏸ Pause' }).click();
   await page.waitForTimeout(120);
   const paused = await tick();
+  const total = parseInt((await status.textContent())!.match(/tick \d+\/(\d+)/)![1], 10);
+  expect(paused).toBeLessThan(total - 2); // room left for the step assertion
   await page.waitForTimeout(400);
-  expect(await tick()).toBe(paused);
+  expect(await tick()).toBe(paused); // …pause holds…
 
   // …step adds exactly one tick…
   await page.getByRole('button', { name: '⏭ Step' }).click();

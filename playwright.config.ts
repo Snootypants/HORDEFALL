@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
+  // Four specs each booting a WebGL renderer starve each other on one GPU.
+  workers: 2,
   testDir: './e2e',
   timeout: 60_000,
   fullyParallel: false,
