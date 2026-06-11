@@ -11,6 +11,7 @@ import type { GraphicsSettings } from '../save/SaveManager';
 import { CoreRenderer } from './Renderer';
 import { WorldRenderer } from './WorldRenderer';
 import { EnemyRenderer } from './EnemyRenderer';
+import { collectFlameEmitters, type FlameEmitter } from './fx/flameEmitters';
 import { ParticleSystem } from './fx/ParticleSystem';
 import { TracerSystem } from './fx/TracerSystem';
 import { DecalSystem } from './fx/DecalSystem';
@@ -35,6 +36,10 @@ export class GameRenderer {
   readonly cameraRig: CameraRig;
   readonly viewModel: ViewModel;
   readonly particles: ParticleSystem;
+  /** Cumulative burning-flame bursts (E2E visibility proof). */
+  flameBurstCount = 0;
+  private flamePulse = 0;
+  private readonly flameScratch: FlameEmitter[] = [];
   readonly tracers: TracerSystem;
   readonly decals: DecalSystem;
   readonly debugDraw: DebugDraw;
@@ -204,6 +209,20 @@ export class GameRenderer {
     this.pickupRenderer.update(sim.pickups, frame.time);
     this.companionRenderer.update(sim.companions, frame.time);
     this.world.syncBarrels(sim.barrels);
+
+    // Burning enemies: pulsed rising flame bursts (capped emitters; burst()
+    // already respects the particles toggle, density, and capacity budget).
+    this.flamePulse -= frame.dt;
+    if (this.flamePulse <= 0) {
+      this.flamePulse = 0.07;
+      const n = collectFlameEmitters(sim.enemies, 24, this.flameScratch);
+      for (let i = 0; i < n; i++) {
+        const e = this.flameScratch[i];
+        // Negative gravity → embers rise; alternating orange/amber reads as fire.
+        this.particles.burst(e.x, e.y, e.z, i % 2 === 0 ? 0xff7a2e : 0xffb02e, 2, 1.1, 0.38, -3.5, 0.7);
+        this.flameBurstCount++;
+      }
+    }
     this.particles.update(frame.dt);
     this.tracers.update(frame.dt);
     this.decals.update(frame.dt);

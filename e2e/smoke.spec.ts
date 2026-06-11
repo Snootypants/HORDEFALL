@@ -96,6 +96,17 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   expect(after.hasSim).toBe(true);
   expect(after.drawCalls).toBeGreaterThan(0);
 
+  // Burning enemies show visible flames: force-apply the status and expect
+  // flame particle bursts within a few frames.
+  await page.evaluate(() => {
+    const g = (window as any).HORDEFALL;
+    const idx = g.sim.debugSpawnEnemy('rusher', g.sim.player.x + 4, g.sim.player.z);
+    g.sim.enemies.applyStatus(idx, 'burning');
+  });
+  await page.waitForTimeout(400);
+  const flames = await page.evaluate(() => (window as any).HORDEFALL.renderer.flameBurstCount as number);
+  expect(flames).toBeGreaterThan(0);
+
   // --- Tuning console renders inside the F8 developer menu
   await page.keyboard.press('F8');
   await expect(screen.locator('.heading', { hasText: 'Developer' })).toBeVisible();
