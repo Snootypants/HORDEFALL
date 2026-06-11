@@ -15,7 +15,7 @@ Fight procedurally composed waves of seven enemy archetypes (plus a phased boss 
 | Scale target | 1000 concurrent enemies (SoA + instancing + spatial hash) |
 | Content | 6 weapons, 8 enemy types (incl. boss), 24 upgrades, 7 status effects, 5 wave events, 3 maps |
 | Persistence | Versioned localStorage saves with v1→v2 migration, import/export |
-| Tests | 145 unit + integration tests (`vitest`), headless smoke mode |
+| Tests | 320+ unit/integration tests (`vitest`) incl. headless replay verification, golden replay corpus, smoke mode |
 
 ## 2. Setup
 
@@ -41,7 +41,7 @@ npm run preview    # serve the production bundle
 ## 5. Test
 
 ```bash
-npm test           # full suite (195 tests)
+npm test           # full suite (320+ tests)
 npm run test:watch # watch mode
 npm run smoke      # smoke-test mode: boots the entire simulation headless,
                    # plays several seconds of game, stress-ticks 500 enemies
@@ -70,7 +70,7 @@ input  ──InputCommand──▶  sim  ──events──▶  render / ui / au
 
 High-volume entities (enemies, projectiles, particles, pickups, decals, damage numbers) use **structure-of-arrays storage with free-lists** — an ECS-style data layout chosen over a generic ECS framework because the entity archetypes are fixed and the hot loops want contiguous typed arrays.
 
-Determinism hooks: one seeded `Rng` per run, forked into named streams (`waves`, `combat`, `enemy-ai`, …) so systems can't perturb each other; fixed timestep; daily-challenge seeds derive from the UTC date. Replays would need input recording only.
+Determinism: one seeded `Rng` per run, forked into named streams (`waves`, `combat`, `enemy-ai`, …) registered for digest coverage; fixed timestep; daily-challenge seeds derive from the UTC date. **Deterministic replay is implemented** (`src/sim/replay/`): every run records its per-tick input commands plus non-input decisions (upgrade picks, shop purchases, dev actions) with periodic checkpoints and subsystem digests; replays verify headlessly to the recorded final checksum, refuse config/version mismatches, and report the first divergent tick per subsystem on desync. The in-browser **Replay Viewer** (main menu) plays exported replay JSON read-only with play/pause/step/fast-forward/free-cam. Same-engine determinism — cross-browser bitwise equality is not claimed.
 
 ## 7. Folder Structure
 
@@ -92,7 +92,7 @@ src/
 │                world meshes, debug draw
 ├── input/       InputManager (rebindable), gamepad, bindings
 ├── audio/       AudioManager (bus tree), synthesized SFX recipes, event wiring
-├── ui/          HUD, minimap, damage numbers, menu screens, styles
+├── ui/          HUD, fixed north-up minimap, damage numbers, menus, styles
 ├── save/        SaveManager: versioning, migration, quarantine, import/export
 ├── debug/       Dev console, performance overlay
 └── game/        Game orchestrator, screen registry, dev actions, persistence
