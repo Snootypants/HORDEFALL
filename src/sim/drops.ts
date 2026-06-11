@@ -52,6 +52,8 @@ export function effectiveWeights(
         break;
       case 'credits':
         break;
+      case 'weapon':
+        break; // wave reward only; weight stays as configured (0)
     }
     return weight * clamp(mult, 1, maxBoost);
   });

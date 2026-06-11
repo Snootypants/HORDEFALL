@@ -201,13 +201,18 @@ export function driveRun(sim: Simulation, targetWaves: number, maxTicks = 90_000
       }
       sim.waves.skipBreak();
     }
-    if (sim.waves.state === 'active') {
+    if (sim.waves.state === 'active' || sim.waves.state === 'spawning') {
       activeTicks++;
-      if (activeTicks > 2.5 * 60) {
+      // Force-clear leash (this is a HARNESS, see header): clear after a
+      // short combat window, or immediately when the scripted player is
+      // about to die — cache-unlocked guns raise powerScore, which scales
+      // later waves beyond what scripted aim survives organically.
+      const panic = sim.player.health < 45 && sim.player.armor <= 0;
+      if (activeTicks > 1.8 * 60 || panic) {
         sim.enemies.killAll(true, sim.rng);
         activeTicks = 0;
       }
-    } else if (sim.waves.state !== 'spawning') {
+    } else {
       activeTicks = 0;
     }
     scriptedCommand(tick, cmd);

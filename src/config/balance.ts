@@ -50,6 +50,7 @@ export const BALANCE: BalanceConfig = {
     dropChance: 0.28,
     adaptiveDropMaxBoost: 3,
     lowArmorHealthBoost: 0.5,
+    weaponCacheWaves: [2, 6],
   },
   waves: {
     baseBudget: 60,

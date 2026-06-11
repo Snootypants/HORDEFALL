@@ -51,10 +51,13 @@ describe('effectiveWeights', () => {
   it('combined low resources: every kind boosted, all clamped at max boost', () => {
     const w = effectiveWeights(PICKUPS, { healthFrac: 0, armorFrac: 0, ammoFrac: 0 }, 1);
     for (const p of PICKUPS) {
+      if (p.weight === 0) continue; // reward-only entries never random-drop
       const mult = weightOf(w, p.id) / p.weight;
       expect(mult).toBeLessThanOrEqual(MAX_BOOST + 1e-9);
       expect(mult).toBeGreaterThanOrEqual(1);
     }
+    // The weapon cache stays at zero weight even under maximum need.
+    expect(weightOf(w, 'weapon-cache')).toBe(0);
     // health gets both its own boost and the armor nudge — still clamped
     expect(weightOf(w, 'health-small')).toBeCloseTo(baseOf('health-small') * MAX_BOOST);
   });
@@ -62,6 +65,7 @@ describe('effectiveWeights', () => {
   it('clamps garbage fractions into the sane range', () => {
     const w = effectiveWeights(PICKUPS, { healthFrac: -5, armorFrac: 7, ammoFrac: NaN }, 1);
     for (const p of PICKUPS) {
+      if (p.weight === 0) continue; // reward-only entries never random-drop
       const mult = weightOf(w, p.id) / p.weight;
       expect(Number.isFinite(mult)).toBe(true);
       expect(mult).toBeGreaterThanOrEqual(1);

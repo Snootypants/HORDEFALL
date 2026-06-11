@@ -265,7 +265,7 @@ export interface StatusInteraction {
 // Pickups
 // ---------------------------------------------------------------------------
 
-export type PickupKind = 'health' | 'armor' | 'ammo' | 'credits';
+export type PickupKind = 'health' | 'armor' | 'ammo' | 'credits' | 'weapon';
 
 export interface PickupConfig {
   id: string;
@@ -361,6 +361,8 @@ export interface EconomyConfig {
   dropChance: number;
   /** Adaptive drops: max per-kind weight multiplier when a resource is empty. */
   adaptiveDropMaxBoost: number;
+  /** Waves whose clear drops a weapon-unlock cache (acquisition pacing). */
+  weaponCacheWaves: number[];
   /** Adaptive drops: extra health-weight boost contributed by empty armor. */
   lowArmorHealthBoost: number;
 }

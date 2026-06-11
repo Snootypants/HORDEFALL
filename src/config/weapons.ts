@@ -111,7 +111,7 @@ export const WEAPONS: WeaponConfig[] = [
       { cost: 450, spreadMult: 0.75, label: 'Full choke (-25% spread)' },
       { cost: 700, magBonus: 3, reloadMult: 0.8, label: '+3 shells, faster pump' },
     ],
-    unlockCost: 600,
+    unlockCost: 350,
     unlockedByDefault: false,
   },
   {

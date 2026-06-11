@@ -100,6 +100,10 @@ export function createShopScreen(api: GameApi): Screen {
   panel.append(
     el('div', { className: 'heading', text: 'Armory' }),
     creditsLine,
+    el('div', {
+      className: 'muted',
+      text: `Guns are bought here — weapon caches also drop after waves ${BALANCE.economy.weaponCacheWaves.join(' & ')}.`,
+    }),
     grid,
     button('Return to the field', () => api.resumeGame(), 'btn btn-phosphor'),
   );

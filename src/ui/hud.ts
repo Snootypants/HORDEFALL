@@ -143,6 +143,8 @@ export class Hud {
       this.showAnnounce(`WAVE ${e.wave} CLEARED — ${formatTime(e.clearTimeSec)}`);
     }));
     this.unsubs.push(bus.on('player:killstreak', (e) => this.showAnnounce(`${e.streak} KILL STREAK`)));
+    this.unsubs.push(bus.on('weapon:cache-spawned', () => this.showAnnounce('WEAPON CACHE DEPLOYED')));
+    this.unsubs.push(bus.on('weapon:cache-unlocked', (e) => this.showAnnounce(`${e.name.toUpperCase()} UNLOCKED`)));
     this.unsubs.push(bus.on('player:levelup', (e) => this.showAnnounce(`LEVEL ${e.level}`)));
     this.unsubs.push(bus.on('boss:spawned', (e) => {
       this.bossWrap.style.display = 'block';

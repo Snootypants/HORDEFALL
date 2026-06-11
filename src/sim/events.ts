@@ -51,6 +51,8 @@ export interface GameEvents {
 
   // Pickups / economy
   'pickup:collected': { kind: string; amount: number };
+  'weapon:cache-spawned': { x: number; z: number };
+  'weapon:cache-unlocked': { weaponId: string; name: string };
   'pickup:spawned': { idx: number };
   'currency:changed': { total: number };
 

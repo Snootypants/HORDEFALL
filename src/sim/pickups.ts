@@ -17,6 +17,8 @@ export interface PickupHandlers {
   addArmor: (amount: number) => void;
   addAmmoFraction: (frac: number) => void;
   addCredits: (amount: number) => void;
+  /** Weapon cache collected: unlock the cheapest still-locked gun. */
+  unlockWeapon: () => void;
 }
 
 export class Pickups {
@@ -140,6 +142,9 @@ export class Pickups {
         break;
       case 'credits':
         handlers.addCredits(cfg.amount);
+        break;
+      case 'weapon':
+        handlers.unlockWeapon();
         break;
     }
     this.bus.emit('pickup:collected', { kind: cfg.kind, amount: cfg.amount });

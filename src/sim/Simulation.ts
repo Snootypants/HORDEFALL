@@ -186,6 +186,22 @@ export class Simulation {
     this.bus.on('pickup:collected', () => {
       this.stats.pickupsCollected++;
     });
+    // Weapon-acquisition pacing: configured wave clears drop a cache that
+    // unlocks the cheapest still-locked gun (first new gun by wave 3).
+    this.bus.on('wave:cleared', (e) => {
+      if (!BALANCE.economy.weaponCacheWaves.includes(e.wave)) return;
+      if (!this.cheapestLockedGun()) return;
+      // Deterministic spot: nudged from the player toward the arena center.
+      const px = this.player.x;
+      const pz = this.player.z;
+      const len = Math.sqrt(px * px + pz * pz);
+      const x = len > 1e-3 ? px - (px / len) * 2 : px + 2;
+      const z = len > 1e-3 ? pz - (pz / len) * 2 : pz;
+      const cache = PICKUPS.find((p) => p.kind === 'weapon');
+      if (cache && this.pickups.spawn(cache, x, z)) {
+        this.bus.emit('weapon:cache-spawned', { x, z });
+      }
+    });
     // Subscribed once here (not in startRun) so a re-entrant startRun can
     // never double-deploy turrets.
     this.bus.on('wave:start', () => {
@@ -256,6 +272,12 @@ export class Simulation {
         this.stats.creditsEarned += amt;
         this.bus.emit('currency:changed', { total: this.credits });
       },
+      unlockWeapon: () => {
+        const gun = this.cheapestLockedGun();
+        if (!gun) return;
+        this.weapons.unlock(gun.id); // persists via the normal profile path
+        this.bus.emit('weapon:cache-unlocked', { weaponId: gun.id, name: gun.name });
+      },
     });
 
     // 8. Waves
@@ -306,6 +328,16 @@ export class Simulation {
     this.player.health = Math.max(this.player.health, healthFrac * this.player.maxHealth);
     this.player.armor = Math.max(this.player.armor, armorFrac * this.player.maxArmor);
     this.companions.syncCounts(this.playerStats.droneCount, this.playerStats.turretCount);
+  }
+
+  /** Cheapest gun the player hasn't unlocked yet (cache reward target). */
+  private cheapestLockedGun(): { id: string; name: string } | null {
+    let best: (typeof WEAPONS)[number] | null = null;
+    for (const w of WEAPONS) {
+      if (w.kind === 'melee' || this.weapons.runtime.get(w.id)!.unlocked) continue;
+      if (!best || w.unlockCost < best.unlockCost) best = w;
+    }
+    return best;
   }
 
   /** Current resource fullness — drives adaptive drop weighting. */
