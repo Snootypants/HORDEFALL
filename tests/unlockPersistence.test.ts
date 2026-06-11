@@ -9,7 +9,7 @@ import { Simulation } from '../src/sim/Simulation';
 import { MAPS } from '../src/config/maps';
 import { WEAPONS } from '../src/config/weapons';
 import { persistRunResults } from '../src/game/persistRun';
-import { runDevAction } from '../src/game/devActions';
+import { runDevAction } from '../src/sim/devActions';
 import { buyShopItem } from '../src/game/shopActions';
 import { defaultSaveData } from '../src/save/SaveManager';
 import type { AudioManager } from '../src/audio/AudioManager';

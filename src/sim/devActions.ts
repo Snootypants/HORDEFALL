@@ -3,7 +3,7 @@
  * Pure functions over the Simulation — no UI dependencies.
  */
 
-import type { Simulation } from '../sim/Simulation';
+import type { Simulation } from './Simulation';
 
 export type DevAction =
   | { kind: 'spawn'; enemyId: string; count: number }

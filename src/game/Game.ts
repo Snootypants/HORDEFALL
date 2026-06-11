@@ -26,9 +26,10 @@ import { DevConsole } from '../debug/DevConsole';
 import { PerfOverlay } from '../debug/PerfOverlay';
 import { AchievementTracker } from './achievements';
 import { registerScreens } from './setupScreens';
-import { runDevAction, type DevAction } from './devActions';
+import { runDevAction, type DevAction } from '../sim/devActions';
 import { buyShopItem } from './shopActions';
 import { persistRunResults } from './persistRun';
+import { ReplayRecorder } from '../sim/replay/ReplayRecorder';
 import type { GameApi } from '../ui/menus/api';
 import type { DebugDraw } from '../render/DebugDraw';
 
@@ -53,6 +54,8 @@ export class Game implements GameApi {
   readonly tuningPresets = new TuningPresetStore(window.localStorage);
 
   sim: Simulation | null = null;
+  /** Records every run; export from the game-over/pause screens. */
+  recorder: ReplayRecorder | null = null;
   renderer: GameRenderer | null = null;
   private loop: FixedTimestepLoop;
   private readonly canvas: HTMLCanvasElement;
@@ -125,6 +128,12 @@ export class Game implements GameApi {
       mapConfig,
       seed: finalSeed,
       unlockedWeapons: this.saveData.unlocks.weapons,
+      tuning: this.tuning,
+    });
+    this.recorder = new ReplayRecorder({
+      mapId: mapConfig.id,
+      seed: finalSeed,
+      unlockedWeapons: [...this.saveData.unlocks.weapons],
       tuning: this.tuning,
     });
     this.sim.enemies.setCorpseBudget(this.saveData.settings.graphics.maxCorpses);
@@ -303,6 +312,7 @@ export class Game implements GameApi {
   private step(dt: number): void {
     if (!this.sim) return;
     this.sim.tick(dt, this.pendingCmd);
+    this.recorder?.afterTick(this.sim, this.pendingCmd);
     resetFrameEdges(this.pendingCmd);
   }
 
@@ -354,6 +364,7 @@ export class Game implements GameApi {
   applyUpgradeChoice(id: string): void {
     if (!this.sim) return;
     if (this.sim.progression.consumePendingLevelUp()) {
+      this.recorder?.recordDecision('upgrade', id);
       this.sim.applyUpgrade(id);
     }
     if (this.sim.progression.pendingLevelUps > 0) this.ui.show('upgrade');
@@ -361,7 +372,16 @@ export class Game implements GameApi {
   }
 
   buyShopItem(kind: Parameters<GameApi['buyShopItem']>[0]): boolean {
-    return this.sim ? buyShopItem(this.sim, this.audio, kind) : false;
+    if (!this.sim) return false;
+    const ok = buyShopItem(this.sim, this.audio, kind);
+    if (ok) this.recorder?.recordDecision('shop', kind);
+    return ok;
+  }
+
+  /** Serialize the current run's replay (inputs + decisions + checkpoints). */
+  exportReplay(): string | null {
+    if (!this.sim || !this.recorder) return null;
+    return JSON.stringify(this.recorder.finalize(this.sim));
   }
 
   // ------------------------------------------------------------- api: dev
@@ -377,6 +397,7 @@ export class Game implements GameApi {
 
   private dev(action: DevAction): unknown {
     if (!this.sim) return undefined;
+    this.recorder?.recordDecision('dev', JSON.stringify(action));
     return runDevAction(this.sim, action);
   }
 }

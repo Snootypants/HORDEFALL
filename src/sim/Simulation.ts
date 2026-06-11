@@ -65,6 +65,8 @@ export class Simulation {
   readonly stats = new RunStats();
   /** Session tuning overrides; sim systems read these at application points. */
   readonly tuning: TuningOverrides;
+  /** Named subsystem RNG streams — registered so replay digests cover them. */
+  readonly rngStreams = new Map<string, Rng>();
 
   time = 0;
   credits = 0;
@@ -84,6 +86,13 @@ export class Simulation {
   private readonly fireView: FireView = { ox: 0, oy: 0, oz: 0, dx: 0, dy: 0, dz: 1 };
   private readonly forwardScratch = { x: 0, y: 0, z: 0 };
 
+  /** Fork + register a named RNG stream (replay digests read its state). */
+  private forkRng(name: string): Rng {
+    const rng = this.rng.fork(name);
+    this.rngStreams.set(name, rng);
+    return rng;
+  }
+
   constructor(opts: SimulationOptions) {
     this.seed = opts.seed;
     this.tuning = opts.tuning ?? defaultTuning();
@@ -91,7 +100,7 @@ export class Simulation {
     this.map = generateMap(opts.mapConfig, opts.mapConfig.seed ^ opts.seed);
     this.collision = new CollisionWorld(this.map);
     this.player = new PlayerSim(BALANCE.player, this.bus, this.map.playerSpawn.x, this.map.playerSpawn.z);
-    this.weapons = new WeaponSim(WEAPONS, opts.unlockedWeapons ?? [], this.bus, this.rng.fork('weapons'), this.tuning);
+    this.weapons = new WeaponSim(WEAPONS, opts.unlockedWeapons ?? [], this.bus, this.forkRng('weapons'), this.tuning);
     this.enemies = new EnemyManager(ENEMIES, this.bus);
     this.barrels = new Barrels(this.map.barrels);
     this.pickups = new Pickups(PICKUPS, this.bus);
@@ -102,7 +111,7 @@ export class Simulation {
       events: WAVE_EVENTS,
       map: this.map,
       bus: this.bus,
-      rng: this.rng.fork('waves'),
+      rng: this.forkRng('waves'),
       mgr: this.enemies,
       tuning: this.tuning,
     });
@@ -127,7 +136,7 @@ export class Simulation {
       barrels: this.barrels,
       collision: this.collision,
       bus: this.bus,
-      rng: this.rng.fork('combat'),
+      rng: this.forkRng('combat'),
       stats: this.stats,
       player: () => this.playerStats,
       healPlayer: (amount) => this.player.heal(amount),
@@ -143,7 +152,7 @@ export class Simulation {
       playerZ: 0,
       playerAlive: true,
       collision: this.collision,
-      rng: this.rng.fork('enemy-ai'),
+      rng: this.forkRng('enemy-ai'),
       bus: this.bus,
       projectiles: this.enemyProjectiles,
       damagePlayer,

@@ -38,6 +38,7 @@ export interface GameApi {
   applySettings(): void;
   applyUpgradeChoice(id: string): void;
   /** Shop actions return false when unaffordable. */
+  exportReplay(): string | null;
   buyShopItem(kind: 'ammo' | 'health' | 'armor' | `unlock:${string}` | `tier:${string}`): boolean;
   /** Dev/debug hooks. */
   devSpawn(enemyId: string, count: number): void;

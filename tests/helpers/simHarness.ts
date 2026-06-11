@@ -5,87 +5,10 @@
  */
 
 import { Simulation } from '../../src/sim/Simulation';
+export { simChecksum } from '../../src/sim/replay/digest';
 import { neutralInput, resetFrameEdges, type InputCommand } from '../../src/sim/inputCommand';
 import { EState } from '../../src/sim/enemies/EnemyManager';
 import { wrapAngle } from '../../src/core/math';
-
-/** FNV-1a over a string; stable, fast, plenty for state comparison. */
-function fnv1a(s: string): string {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, '0');
-}
-
-/**
- * Simulation state checksum. String(number) round-trips float64 exactly, so
- * any drift in any included field changes the hash.
- *
- * COVERAGE: time/credits/revives, full player pose+vitals, EVERY weapon's
- * runtime (mag/reserve/tier/unlocked) + reload/cooldown/bloom, progression
- * (level/xp/score/pending/combo/streak) + upgrade stacks, wave director
- * public state incl. queued-spawn count, master RNG state, enemies (pos/hp/
- * state/yaw + per-entity status fold), both projectile pools, pickups,
- * barrels, and companion drones/turrets.
- *
- * KNOWN LIMITATIONS (documented, not hash-covered): subsystem RNG forks
- * (weapons/waves/AI hold private Rng instances — only the master sim.rng is
- * included; fork divergence still surfaces through the state it perturbs),
- * the wave queue CONTENTS (only its count is public), and Progression's
- * private lastKillTime (combo decay surfaces via comboMult on later ticks).
- * This is checksum-grade determinism evidence, not a replay-grade full
- * state serialization.
- */
-export function simChecksum(sim: Simulation): string {
-  const parts: (number | string)[] = [
-    sim.time, sim.credits, sim.revivesLeft,
-    sim.player.x, sim.player.y, sim.player.z, sim.player.yaw, sim.player.pitch,
-    sim.player.health, sim.player.armor, sim.player.stamina, sim.player.alive ? 1 : 0,
-    sim.progression.level, sim.progression.xp, sim.progression.score,
-    sim.progression.pendingLevelUps, sim.progression.comboMult, sim.progression.killStreak,
-    sim.waves.wave, sim.waves.state, sim.waves.bossNumber, sim.waves.breakLeft,
-    sim.waves.queuedSpawns, sim.waves.ammoDropMult, sim.waves.fogDensityMult,
-    sim.rng.stateSnapshot,
-    sim.weapons.currentId, sim.weapons.reloading ? 1 : 0, sim.weapons.reloadLeft,
-    sim.weapons.cooldown, sim.weapons.bloom,
-    sim.stats.kills, sim.stats.shotsFired, sim.stats.damageDealt, sim.stats.damageTaken,
-    sim.enemies.aliveCount,
-  ];
-  // Every weapon's runtime, not just the current one.
-  for (const w of sim.weapons.weapons) {
-    const rt = sim.weapons.runtime.get(w.id)!;
-    parts.push(w.id, rt.mag, rt.reserve, rt.tier, rt.unlocked ? 1 : 0);
-  }
-  for (const [id, count] of [...sim.upgradeStacks.entries()].sort()) parts.push(id, count);
-
-  const e = sim.enemies;
-  for (let i = 0; i < e.highWater; i++) {
-    if (!e.aliveFlags[i]) continue;
-    parts.push(i, e.posX[i], e.posY[i], e.groundY[i], e.posZ[i], e.hp[i], e.state[i], e.yaw[i], e.status.checksumOf(i));
-  }
-  const pp = sim.playerProjectiles;
-  for (let i = 0; i < pp.alive.length; i++) {
-    if (!pp.alive[i]) continue;
-    parts.push('pp', i, pp.posX[i], pp.posY[i], pp.posZ[i], pp.damage[i], pp.blastDamage[i], pp.life[i]);
-  }
-  const ep = sim.enemyProjectiles;
-  for (let i = 0; i < ep.alive.length; i++) {
-    if (!ep.alive[i]) continue;
-    parts.push('ep', i, ep.posX[i], ep.posY[i], ep.posZ[i], ep.damage[i], ep.life[i]);
-  }
-  const pk = sim.pickups;
-  for (let i = 0; i < pk.alive.length; i++) {
-    if (!pk.alive[i]) continue;
-    parts.push('pk', i, pk.posX[i], pk.posZ[i], pk.kindIdx[i], pk.life[i]);
-  }
-  const b = sim.barrels;
-  for (let i = 0; i < b.count; i++) parts.push('b', i, b.alive[i], b.hp[i]);
-  for (const d of sim.companions.drones) parts.push('d', d.x, d.y, d.z, d.fireLeft, d.orbitPhase);
-  for (const t of sim.companions.turrets) parts.push('t', t.x, t.z, t.yaw, t.fireLeft, t.active ? 1 : 0);
-  return fnv1a(parts.join('|'));
-}
 
 /**
  * Deterministic command script: pure function of the tick index. Moves,
