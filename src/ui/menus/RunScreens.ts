@@ -93,7 +93,7 @@ export function createUpgradeScreen(api: GameApi): Screen {
 export function createShopScreen(api: GameApi): Screen {
   const root = el('div', { className: 'screen' });
   const panel = el('div', { className: 'panel' });
-  panel.style.minWidth = '620px';
+  panel.classList.add('shop-panel'); // fixed-size: see styles.css
   const creditsLine = el('div', { className: 'mono accent' });
   creditsLine.style.fontSize = '22px';
   const grid = el('div', { className: 'shop-grid' });

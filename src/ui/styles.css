@@ -210,7 +210,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--ink)
 /* ---------- upgrade cards ---------- */
 #upgrade-cards { display: flex; gap: 18px; margin-top: 26px; }
 .upgrade-card {
-  width: 230px; padding: 22px 18px; cursor: pointer; text-align: left; pointer-events: auto;
+  /* Fixed card box: rarity, name, and description length never resize it. */
+  width: 230px; height: 264px; display: flex; flex-direction: column;
+  padding: 22px 18px; cursor: pointer; text-align: left; pointer-events: auto;
   background: var(--panel); border: 1px solid rgba(232, 222, 210, 0.15);
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   transition: transform 0.12s, border-color 0.12s;
@@ -218,7 +220,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--ink)
 .upgrade-card:hover { transform: translateY(-6px); }
 .upgrade-card .u-icon { font-size: 34px; line-height: 1; }
 .upgrade-card .u-name { font-family: var(--font-display); font-size: 24px; letter-spacing: 0.04em; margin: 10px 0 6px; text-transform: uppercase; }
-.upgrade-card .u-desc { font-size: 13px; color: var(--bone); opacity: 0.85; min-height: 36px; }
+.upgrade-card .u-desc { font-size: 13px; color: var(--bone); opacity: 0.85; flex: 1; overflow: hidden; }
 .upgrade-card .u-stacks { font-family: var(--font-mono); font-size: 11px; color: var(--dim); margin-top: 10px; }
 .upgrade-card.rarity-common { border-left: 4px solid #9aa7ad; }
 .upgrade-card.rarity-common .u-name { color: #c6d2d8; }
@@ -227,8 +229,18 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--ink)
 .upgrade-card.rarity-epic { border-left: 4px solid var(--ember); box-shadow: 0 0 22px rgba(255, 122, 46, 0.18); }
 .upgrade-card.rarity-epic .u-name { color: var(--ember-hot); }
 
-/* shop */
-.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 26px; margin-top: 14px; }
+/* shop — STABLE dimensions: the panel is fixed-size (content scrolls) and
+   buttons reserve two-line height so price/reason changes never reflow the
+   panel during purchases. */
+.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 26px; margin-top: 14px; align-content: start; }
+.shop-grid .btn { min-height: 58px; }
+.btn .btn-reason { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--dim); margin-top: 2px; }
+.panel.shop-panel {
+  width: min(700px, 92vw);
+  height: min(76vh, 640px);
+  display: flex; flex-direction: column;
+}
+.panel.shop-panel .shop-grid { flex: 1; overflow-y: auto; }
 .stat-grid { display: grid; grid-template-columns: auto auto; gap: 4px 30px; font-family: var(--font-mono); font-size: 14px; margin-top: 14px; }
 .stat-grid .k { color: var(--dim); text-transform: uppercase; font-size: 11px; letter-spacing: 0.12em; align-self: center; }
 .stat-grid .v { text-align: right; color: var(--bone); }
