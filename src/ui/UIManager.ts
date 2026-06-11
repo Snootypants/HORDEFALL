@@ -16,6 +16,7 @@ export type ScreenName =
   | 'game-over'
   | 'debug-menu'
   | 'controls'
+  | 'replay-viewer'
   | 'none';
 
 export interface Screen {

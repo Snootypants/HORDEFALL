@@ -30,6 +30,9 @@ import { runDevAction, type DevAction } from '../sim/devActions';
 import { buyShopItem } from './shopActions';
 import { persistRunResults } from './persistRun';
 import { ReplayRecorder } from '../sim/replay/ReplayRecorder';
+import { ReplayModeController } from './replayMode';
+import { createReplayHost } from './replayHost';
+import { applyGameSettings, applyGameInputSettings, wireFirstGestureAudio } from './applySettings';
 import type { GameApi } from '../ui/menus/api';
 import type { DebugDraw } from '../render/DebugDraw';
 
@@ -56,17 +59,18 @@ export class Game implements GameApi {
   sim: Simulation | null = null;
   /** Records every run; export from the game-over/pause screens. */
   recorder: ReplayRecorder | null = null;
+  /** Read-only replay viewer mode (never persists). */
+  readonly replayMode: ReplayModeController;
   renderer: GameRenderer | null = null;
   private loop: FixedTimestepLoop;
-  private readonly canvas: HTMLCanvasElement;
+  readonly canvas: HTMLCanvasElement;
   private playing = false;
   private gameOverPending = 0;
   private lastFrame = 0;
   private lastRun: { mapId: string; seed: number; daily: boolean } | null = null;
-  private audioUnwire: (() => void) | null = null;
+  audioUnwire: (() => void) | null = null;
   private gameOverUnsub: (() => void) | null = null;
-  private simMs = 0;
-  private renderMs = 0;
+  private simMs = 0; private renderMs = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -79,6 +83,7 @@ export class Game implements GameApi {
     this.devConsole = new DevConsole(this.ui.root, this);
     this.perfOverlay = new PerfOverlay(this.ui.root);
     this.achievements = new AchievementTracker(this.saveData, () => this.saveManager.save(this.saveData));
+    this.replayMode = new ReplayModeController(createReplayHost(this), this.ui.root);
     this.loop = new FixedTimestepLoop(SIM_DT, (dt) => this.step(dt));
     this.applyInputSettings();
     this.hud.setVisible(false);
@@ -99,7 +104,7 @@ export class Game implements GameApi {
     registerScreens(this);
     setUiSoundHook((kind) => this.audio.play(kind === 'click' ? 'ui-click' : 'ui-hover', kind === 'click' ? 0.9 : 0.5, kind === 'hover' ? 60 : 0));
     this.ui.show('main-menu');
-    this.audioOnFirstGesture();
+    wireFirstGestureAudio(this.audio);
     this.input.onPointerLockChange((locked) => {
       if (!locked && this.playing && !this.ui.uiOpen && this.gameOverPending <= 0) this.pauseGame();
     });
@@ -107,12 +112,6 @@ export class Game implements GameApi {
     this.lastFrame = performance.now();
     requestAnimationFrame((t) => this.frame(t));
     this.log.info('boot complete');
-  }
-
-  private audioOnFirstGesture(): void {
-    const resume = (): void => this.audio.resume();
-    window.addEventListener('pointerdown', resume, { once: true });
-    window.addEventListener('keydown', resume, { once: true });
   }
 
   // -------------------------------------------------------------- run flow
@@ -168,7 +167,7 @@ export class Game implements GameApi {
     }
   }
 
-  private teardownRun(): void {
+  teardownRun(): void {
     this.gameOverUnsub?.();
     this.gameOverUnsub = null;
     this.gameOverPending = 0; // a pending game-over must never fire on a new run
@@ -248,6 +247,7 @@ export class Game implements GameApi {
       this.advanceSim(dtReal, cmd);
       this.simMs = performance.now() - t0;
     }
+    this.replayMode.update(dtReal);
 
     if (this.sim && this.renderer) {
       const t0 = performance.now();
@@ -321,7 +321,8 @@ export class Game implements GameApi {
     if (this.input.consumeUiPress('toggleDebugOverlay')) this.perfOverlay.toggle();
 
     if (this.input.consumeUiPress('pause')) {
-      if (this.devConsole.visible) this.devConsole.toggle(false);
+      if (this.replayMode.active) this.replayMode.exit();
+      else if (this.devConsole.visible) this.devConsole.toggle(false);
       else if (this.ui.current === 'pause' || this.ui.current === 'shop' || this.ui.current === 'debug-menu') this.resumeGame();
       else if (this.ui.current === 'settings') this.openScreen(this.ui.settingsReturnTo);
       else if (this.playing && !this.ui.uiOpen) this.pauseGame();
@@ -342,21 +343,11 @@ export class Game implements GameApi {
   // -------------------------------------------------------------- settings
 
   applySettings(): void {
-    this.saveManager.save(this.saveData);
-    this.audio.applySettings(this.saveData.settings.audio);
-    this.applyInputSettings();
-    this.sim?.enemies.setCorpseBudget(this.saveData.settings.graphics.maxCorpses);
-    if (this.renderer) {
-      this.renderer.applySettings(this.saveData.settings.graphics);
-      this.renderer.core.setFov(this.saveData.settings.fov);
-      this.renderer.cameraRig.setBaseFov(this.saveData.settings.fov);
-    }
+    applyGameSettings(this);
   }
 
-  private applyInputSettings(): void {
-    this.input.bindings = { ...this.saveData.settings.keybinds };
-    this.input.mouseSensitivity = this.saveData.settings.mouseSensitivity;
-    this.input.invertY = this.saveData.settings.invertY;
+  applyInputSettings(): void {
+    applyGameInputSettings(this);
   }
 
   // ------------------------------------------------------------ api: shop
@@ -382,6 +373,11 @@ export class Game implements GameApi {
   exportReplay(): string | null {
     if (!this.sim || !this.recorder) return null;
     return JSON.stringify(this.recorder.finalize(this.sim));
+  }
+
+  /** Enter the read-only replay viewer. Returns an error message or null. */
+  startReplay(json: string): string | null {
+    return this.replayMode.start(json);
   }
 
   // ------------------------------------------------------------- api: dev

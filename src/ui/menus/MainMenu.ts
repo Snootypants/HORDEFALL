@@ -74,6 +74,7 @@ export function createMainMenu(api: GameApi): Screen {
       api.ui.settingsReturnTo = 'main-menu';
       api.openScreen('settings');
     }),
+    button('Replay Viewer', () => api.openScreen('replay-viewer')),
     button('Export Save', () => {
       const blob = new Blob([api.saveManager.exportJson()], { type: 'application/json' });
       const a = document.createElement('a');

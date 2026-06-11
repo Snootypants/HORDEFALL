@@ -38,6 +38,9 @@ export class GameRenderer {
   readonly particles: ParticleSystem;
   /** Cumulative burning-flame bursts (E2E visibility proof). */
   flameBurstCount = 0;
+  /** Replay viewer: orbiting free camera overrides the first-person rig. */
+  freeCam = false;
+  private freeCamAngle = 0;
   private flamePulse = 0;
   private readonly flameScratch: FlameEmitter[] = [];
   readonly tracers: TracerSystem;
@@ -192,6 +195,12 @@ export class GameRenderer {
     }
 
     this.cameraRig.update(frame.dt, player, frame.time, frame.aiming, sim.weapons.current.adsZoom);
+    if (this.freeCam) {
+      this.freeCamAngle += frame.dt * 0.3;
+      const cam = this.core.camera;
+      cam.position.set(player.x + Math.cos(this.freeCamAngle) * 14, 9, player.z + Math.sin(this.freeCamAngle) * 14);
+      cam.lookAt(player.x, 1.2, player.z);
+    }
     this.viewModel.update(
       frame.dt,
       frame.lookDX,

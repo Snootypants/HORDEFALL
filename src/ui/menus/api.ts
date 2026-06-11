@@ -39,6 +39,8 @@ export interface GameApi {
   applyUpgradeChoice(id: string): void;
   /** Shop actions return false when unaffordable. */
   exportReplay(): string | null;
+  /** Enter the read-only replay viewer. Returns an error message or null. */
+  startReplay(json: string): string | null;
   buyShopItem(kind: 'ammo' | 'health' | 'armor' | `unlock:${string}` | `tier:${string}`): boolean;
   /** Dev/debug hooks. */
   devSpawn(enemyId: string, count: number): void;

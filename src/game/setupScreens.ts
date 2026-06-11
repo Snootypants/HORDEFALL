@@ -15,6 +15,7 @@ import {
 } from '../ui/menus/RunScreens';
 import { createDebugMenu } from '../ui/menus/DebugMenu';
 import { createControlsOverlay } from '../ui/menus/ControlsOverlay';
+import { createReplayScreen } from '../ui/menus/ReplayScreen';
 
 export function registerScreens(game: Game): void {
   const loading = createLoadingScreen();
@@ -27,4 +28,5 @@ export function registerScreens(game: Game): void {
   game.ui.register('game-over', createGameOverScreen(game));
   game.ui.register('debug-menu', createDebugMenu(game));
   game.ui.register('controls', createControlsOverlay(game));
+  game.ui.register('replay-viewer', createReplayScreen(game));
 }
