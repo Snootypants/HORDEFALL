@@ -226,10 +226,15 @@ describe('weapon cycling skips melee (fixes2 P4)', () => {
     }
     weapons2.update(DT, neutralInput(), view2, ctx2, proj); // auto-equips melee
     expect(weapons2.currentId).toBe(MELEE.id);
+    // Stage 2 carryover: staying on melee must be silent — no transient
+    // switch to a dry gun and back (no extra weapon:switched events).
+    let switches = 0;
+    bus2.on('weapon:switched', () => switches++);
     cycle(1);
     expect(weapons2.currentId).toBe(MELEE.id);
     cycle(-1);
     expect(weapons2.currentId).toBe(MELEE.id);
+    expect(switches).toBe(0);
   });
 
   it('slot 0 still equips melee directly', () => {

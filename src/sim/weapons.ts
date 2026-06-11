@@ -184,8 +184,16 @@ export class WeaponSim {
     else if (input.weaponDelta !== 0) {
       // Wheel/gamepad cycling covers GUNS only — melee stays on slot 0 /
       // auto-equip. With no unlocked guns, cycling leaves melee equipped.
+      // From melee, only guns WITH ammo count — switching to a dry gun
+      // would bounce straight back via auto-equip, emitting phantom
+      // weapon:switched events (audio/viewmodel churn).
+      const fromMelee = this.current.kind === 'melee';
       const guns = this.weapons
-        .filter((w) => w.kind !== 'melee' && this.runtime.get(w.id)!.unlocked)
+        .filter((w) => {
+          if (w.kind === 'melee') return false;
+          const rt = this.runtime.get(w.id)!;
+          return rt.unlocked && (!fromMelee || rt.mag + rt.reserve > 0);
+        })
         .sort((a, b) => a.slot - b.slot);
       if (guns.length > 0) {
         const idx = guns.findIndex((w) => w.id === this.currentId);
