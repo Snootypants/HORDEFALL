@@ -91,7 +91,18 @@ test('boot → deploy → run → menus → stress, with zero page errors', asyn
   await screen.getByRole('button', { name: 'TUNING' }).click();
   await expect(screen.getByText(/WEAPONS — damage & tiers apply LIVE/)).toBeVisible();
   await expect(screen.getByText('Global drop chance')).toBeVisible();
-  await expect(screen.getByRole('button', { name: 'Export preset JSON' })).toBeVisible();
+  // Raw-tuning vs saved-preset JSON controls are distinct (exact names).
+  await expect(screen.getByRole('button', { name: 'Export current tuning JSON' })).toBeVisible();
+  await expect(screen.getByRole('button', { name: 'Apply current tuning JSON' })).toBeVisible();
+  await expect(screen.getByRole('button', { name: 'Import saved preset JSON' })).toBeVisible();
+  await expect(screen.getByRole('button', { name: 'Import all saved presets JSON' })).toBeVisible();
+  await expect(screen.getByRole('button', { name: 'Export all saved presets JSON' })).toBeVisible();
+
+  // FAIL-CLOSED raw apply: invalid JSON is rejected and nothing applies.
+  await screen.getByPlaceholder(/JSON box/).fill('{this is not json');
+  await screen.getByRole('button', { name: 'Apply current tuning JSON' }).click();
+  await expect(screen.getByText(/rejected — nothing applied/)).toBeVisible();
+
   // Named presets: save one through the real UI and see it listed.
   await screen.getByPlaceholder(/preset name/).fill('e2e-preset');
   await screen.getByRole('button', { name: 'Save current as preset' }).click();

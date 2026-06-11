@@ -6,6 +6,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  applyTuningJsonStrict,
   defaultTuning,
   validateTuning,
   parseTuningJson,
@@ -156,5 +157,34 @@ describe('tuning application', () => {
     scaleEnemy(enemyById('rusher')!, 2, BALANCE.enemyScaling, false, tuning);
     expect(weaponById('pistol')!.damage).toBe(pistolDamage);
     expect(enemyById('rusher')!.hp).toBe(rusherHp);
+  });
+});
+
+describe('applyTuningJsonStrict (fixes2 P2 — fail-closed raw apply)', () => {
+  it('applies clean JSON and returns no errors', () => {
+    const live = defaultTuning();
+    const incoming = defaultTuning();
+    incoming.weaponDamageMult.pistol = 2;
+    const errors = applyTuningJsonStrict(live, JSON.stringify(incoming));
+    expect(errors).toHaveLength(0);
+    expect(live.weaponDamageMult.pistol).toBe(2);
+  });
+
+  it('rejects invalid JSON without touching live tuning', () => {
+    const live = defaultTuning();
+    live.weaponDamageMult.pistol = 3;
+    const errors = applyTuningJsonStrict(live, '{nope');
+    expect(errors.length).toBeGreaterThan(0);
+    expect(live.weaponDamageMult.pistol).toBe(3); // untouched
+  });
+
+  it('rejects valid JSON with invalid tuning fields — no partial apply', () => {
+    const live = defaultTuning();
+    live.weaponDamageMult.pistol = 3;
+    const bad = { ...defaultTuning(), weaponDamageMult: { rifle: 2 }, dropChance: 42 };
+    const errors = applyTuningJsonStrict(live, JSON.stringify(bad));
+    expect(errors.length).toBeGreaterThan(0);
+    expect(live.weaponDamageMult.pistol).toBe(3); // untouched
+    expect(live.weaponDamageMult.rifle).toBeUndefined(); // the valid part NOT applied either
   });
 });

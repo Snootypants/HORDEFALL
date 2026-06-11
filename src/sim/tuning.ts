@@ -108,6 +108,17 @@ export function parseTuningJson(text: string): { value: TuningOverrides; errors:
   }
 }
 
+/**
+ * FAIL-CLOSED raw apply: parse + validate JSON and apply it to `into` ONLY
+ * when there are zero errors. Returns the errors (empty = applied).
+ */
+export function applyTuningJsonStrict(into: TuningOverrides, json: string): string[] {
+  const { value, errors } = parseTuningJson(json);
+  if (errors.length > 0) return errors;
+  applyTuning(into, value);
+  return [];
+}
+
 /** Copy `from` into `into` in place (the sim holds one stable reference). */
 export function applyTuning(into: TuningOverrides, from: TuningOverrides): void {
   into.weaponDamageMult = { ...from.weaponDamageMult };

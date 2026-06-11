@@ -6,7 +6,8 @@
 import type { WeaponConfig } from '../config/types';
 import type { CombatContext } from './combat/context';
 import { applyOnHitEffects, explodeAt } from './combat/onHit';
-import { dist2XZ, raySphere } from '../core/math';
+import { hitVolumeOf } from './enemies/enemyQueries';
+import { dist2XZ, rayVerticalCapsule } from '../core/math';
 
 const MAX = 512;
 
@@ -96,18 +97,26 @@ export class PlayerProjectiles {
         }
       }
 
-      // Enemy contact: nearest body sphere along the segment
+      // Enemy contact: nearest VISUAL hit volume along the segment — the same
+      // capsules hitscan uses (hitVolumeOf), Minkowski-inflated by the
+      // projectile radius: radius + r with bounds extended ±r keeps the
+      // capsule's core segment identical, which is exactly the swept volume.
       const enemies = ctx.enemies;
-      enemies.queryRadius(nx, nz, 3 + spec.radius, this.hitScratch);
+      // Query must reach enemy centers within (segment + widest volume + r).
+      enemies.queryRadius(nx, nz, segLen + 7 + spec.radius, this.hitScratch);
       let hitIdx = -1;
       let hitT = Infinity;
       for (let n = 0; n < this.hitScratch.length; n++) {
         const j = this.hitScratch[n];
-        const cfg = enemies.configOf(j);
-        const h = cfg.height * enemies.scale[j];
-        const r = Math.max(cfg.radius * enemies.scale[j], h * 0.45) + spec.radius;
+        const vol = hitVolumeOf(enemies, j);
         const t = segLen > 1e-6
-          ? raySphere(px, py, pz, segX / segLen, segY / segLen, segZ / segLen, enemies.posX[j], enemies.posY[j] + h * 0.5, enemies.posZ[j], r)
+          ? rayVerticalCapsule(
+              px, py, pz,
+              segX / segLen, segY / segLen, segZ / segLen,
+              enemies.posX[j], enemies.posZ[j],
+              vol.yBottom - spec.radius, vol.yTop + spec.radius,
+              vol.radius + spec.radius,
+            )
           : null;
         if (t !== null && t <= segLen && t < hitT) {
           hitT = t;

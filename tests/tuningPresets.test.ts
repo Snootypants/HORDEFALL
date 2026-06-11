@@ -89,11 +89,27 @@ describe('TuningPresetStore (P1)', () => {
     expect(store.load('Ship It')?.weaponDamageMult.pistol).toBe(1.8);
   });
 
-  it('imports sanitize garbage tuning values through validateTuning', () => {
+  it('FAIL-CLOSED: invalid tuning fields reject the import — nothing saved', () => {
+    store.save('Existing', tuned(2));
     const json = JSON.stringify({ name: 'Sneaky', tuning: { ...defaultTuning(), weaponDamageMult: { pistol: NaN } } });
     const result = store.importOne(json);
-    expect(result.errors.length).toBeGreaterThan(0); // reported…
-    expect(store.load('Sneaky')?.weaponDamageMult.pistol).toBeUndefined(); // …and dropped
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.name).toBeNull();
+    expect(store.load('Sneaky')).toBeNull(); // not added
+    expect(store.list()).toHaveLength(1); // existing untouched
+  });
+
+  it('importAll merges valid entries and SKIPS invalid ones (not counted)', () => {
+    const mixed = JSON.stringify([
+      { name: 'Good', tuning: tuned(1.5) },
+      { name: 'Bad', tuning: { ...defaultTuning(), dropChance: 99 } },
+      { nameless: true },
+    ]);
+    const result = store.importAll(mixed);
+    expect(result.added).toBe(1);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(store.list().map((p) => p.name)).toEqual(['Good']);
+    expect(store.load('Bad')).toBeNull();
   });
 
   it('exports all and merges all back without destroying existing presets', () => {

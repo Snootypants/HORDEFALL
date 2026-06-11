@@ -182,10 +182,18 @@ export class WeaponSim {
     let targetSlot = -1;
     if (input.weaponSlot >= 0) targetSlot = input.weaponSlot;
     else if (input.weaponDelta !== 0) {
-      const unlocked = this.weapons.filter((w) => this.runtime.get(w.id)!.unlocked).sort((a, b) => a.slot - b.slot);
-      const idx = unlocked.findIndex((w) => w.id === this.currentId);
-      const next = unlocked[(idx + input.weaponDelta + unlocked.length) % unlocked.length];
-      targetSlot = next.slot;
+      // Wheel/gamepad cycling covers GUNS only — melee stays on slot 0 /
+      // auto-equip. With no unlocked guns, cycling leaves melee equipped.
+      const guns = this.weapons
+        .filter((w) => w.kind !== 'melee' && this.runtime.get(w.id)!.unlocked)
+        .sort((a, b) => a.slot - b.slot);
+      if (guns.length > 0) {
+        const idx = guns.findIndex((w) => w.id === this.currentId);
+        const next = idx === -1
+          ? guns[input.weaponDelta > 0 ? 0 : guns.length - 1] // from melee: direction picks the end
+          : guns[(idx + input.weaponDelta + guns.length) % guns.length];
+        targetSlot = next.slot;
+      }
     }
     if (targetSlot >= 0) {
       const target = this.weapons.find((w) => w.slot === targetSlot);

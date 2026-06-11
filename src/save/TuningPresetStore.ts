@@ -1,9 +1,10 @@
 /**
  * Named tuning presets: persisted under their OWN storage key, completely
- * separate from player progression (SaveManager). Every import runs through
- * validateTuning — bad payloads are reported and sanitized, and failed
- * imports never destroy existing presets. Duplicate names auto-suffix
- * ("Name (2)"). The clock is injectable so tests stay deterministic.
+ * separate from player progression (SaveManager). Imports are FAIL-CLOSED:
+ * any validateTuning error rejects the offending preset outright (importAll
+ * skips it; importOne saves nothing), and failed imports never destroy
+ * existing presets. Duplicate names auto-suffix ("Name (2)"). The clock is
+ * injectable so tests stay deterministic.
  */
 
 import type { StorageLike } from './SaveManager';
@@ -109,7 +110,10 @@ export class TuningPresetStore {
     return preset ? JSON.stringify(preset, null, 2) : null;
   }
 
-  /** Import a single preset JSON; reports validation errors, never throws. */
+  /**
+   * Import a single preset JSON — FAIL-CLOSED: any validation error rejects
+   * the whole import and the stored list is left untouched. Never throws.
+   */
   importOne(json: string): { name: string | null; errors: string[] } {
     let raw: unknown;
     try {
@@ -122,15 +126,19 @@ export class TuningPresetStore {
       return { name: null, errors: ['preset: expected an object with a name'] };
     }
     const { value, errors } = validateTuning(entry.tuning);
+    if (errors.length > 0) return { name: null, errors };
     const saved = this.save(entry.name, value);
-    return { name: saved.name, errors };
+    return { name: saved.name, errors: [] };
   }
 
   exportAll(): string {
     return JSON.stringify(this.list(), null, 2);
   }
 
-  /** Merge a preset-array JSON in; invalid entries are skipped + reported. */
+  /**
+   * Merge a preset-array JSON in — FAIL-CLOSED per entry: invalid entries
+   * are SKIPPED (reported, not saved, not counted); valid entries merge.
+   */
   importAll(json: string): { added: number; errors: string[] } {
     let raw: unknown;
     try {
@@ -148,7 +156,10 @@ export class TuningPresetStore {
         continue;
       }
       const { value, errors: tuningErrors } = validateTuning(entry.tuning);
-      errors.push(...tuningErrors.map((e) => `${entry.name}: ${e}`));
+      if (tuningErrors.length > 0) {
+        errors.push(...tuningErrors.map((e) => `skipped "${entry.name}": ${e}`));
+        continue;
+      }
       this.save(entry.name, value);
       added++;
     }

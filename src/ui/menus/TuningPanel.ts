@@ -12,7 +12,7 @@ import { ENEMIES } from '../../config/enemies';
 import { PICKUPS } from '../../config/pickups';
 import { BALANCE } from '../../config/balance';
 import { effectiveDropOdds } from '../../sim/drops';
-import { applyTuning, defaultTuning, parseTuningJson, serializeTuning, MULT_MAX } from '../../sim/tuning';
+import { applyTuning, applyTuningJsonStrict, defaultTuning, serializeTuning, MULT_MAX } from '../../sim/tuning';
 
 export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: () => void } {
   const root = el('div');
@@ -23,7 +23,7 @@ export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: (
   const jsonBox = el('textarea');
   jsonBox.rows = 5;
   jsonBox.style.width = '100%';
-  jsonBox.placeholder = 'tuning preset JSON';
+  jsonBox.placeholder = 'JSON box — holds raw current tuning, one saved preset, or an array of saved presets';
 
   /** Slider over a sparse multiplier map: 1 = default (key removed). */
   function multRow(label: string, map: Record<string, number>, key: string): HTMLElement {
@@ -129,18 +129,18 @@ export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: (
         importStatus.textContent = `saved "${saved.name}"`;
         refresh();
       }),
-      button('Export ALL presets JSON', () => {
+      button('Export all saved presets JSON', () => {
         jsonBox.value = api.tuningPresets.exportAll();
         importStatus.textContent = 'exported all presets';
       }),
-      button('Import preset JSON', () => {
+      button('Import saved preset JSON', () => {
         const r = api.tuningPresets.importOne(jsonBox.value);
         importStatus.textContent = r.name
-          ? `imported "${r.name}"${r.errors.length ? ` (sanitized: ${r.errors.join('; ')})` : ''}`
-          : `import failed: ${r.errors.join('; ')}`;
+          ? `imported "${r.name}"`
+          : `rejected — nothing saved: ${r.errors.join('; ')}`;
         refresh();
       }),
-      button('Import ALL presets JSON', () => {
+      button('Import all saved presets JSON', () => {
         const r = api.tuningPresets.importAll(jsonBox.value);
         importStatus.textContent = `merged ${r.added} preset(s)${r.errors.length ? ` — ${r.errors.join('; ')}` : ''}`;
         refresh();
@@ -164,7 +164,7 @@ export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: (
           importStatus.textContent = finalName ? `renamed to "${finalName}"` : 'rename failed';
           refresh();
         }),
-        button('Export', () => {
+        button('Export preset', () => {
           jsonBox.value = api.tuningPresets.exportOne(p.name) ?? '';
           importStatus.textContent = `exported "${p.name}"`;
         }),
@@ -193,18 +193,16 @@ export function createTuningPanel(api: GameApi): { root: HTMLElement; refresh: (
         applyTuning(api.tuning, defaultTuning());
         refresh();
       }, 'btn btn-danger'),
-      button('Export preset JSON', () => {
+      button('Export current tuning JSON', () => {
         jsonBox.value = serializeTuning(api.tuning);
         importStatus.textContent = 'exported current tuning';
       }),
-      button('Import preset JSON', () => {
-        const { value, errors } = parseTuningJson(jsonBox.value);
-        if (errors.length > 0) {
-          importStatus.textContent = `import problems: ${errors.join('; ')}`;
-        } else {
-          importStatus.textContent = 'imported OK';
-        }
-        applyTuning(api.tuning, value);
+      button('Apply current tuning JSON', () => {
+        // FAIL-CLOSED: nothing applies unless the whole payload validates.
+        const errors = applyTuningJsonStrict(api.tuning, jsonBox.value);
+        importStatus.textContent = errors.length > 0
+          ? `rejected — nothing applied: ${errors.join('; ')}`
+          : 'applied current tuning';
         refresh();
       }),
     );

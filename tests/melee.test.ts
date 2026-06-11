@@ -163,3 +163,77 @@ describe('melee weapon', () => {
     expect(weapons.currentId).toBe('pistol');
   });
 });
+
+describe('weapon cycling skips melee (fixes2 P4)', () => {
+  let bus2: EventBus<GameEvents>;
+  let weapons2: WeaponSim;
+  let ctx2: CombatContext;
+  const view2: FireView = { ox: 0, oy: 1.6, oz: 0, dx: 0, dy: 0, dz: -1 };
+  const proj = new PlayerProjectiles();
+
+  beforeEach(() => {
+    bus2 = new EventBus<GameEvents>();
+    const playerStats = computePlayerStats(BALANCE.player, new Map(), UPGRADES);
+    // pistol (slot 1) + shotgun (slot 2) unlocked alongside the machete.
+    weapons2 = new WeaponSim(WEAPONS, ['shotgun'], bus2, new Rng(7));
+    ctx2 = {
+      enemies: new EnemyManager(ENEMIES, bus2),
+      barrels: { raycast: () => -1, damage: () => {} } as unknown as Barrels,
+      collision: { raycast: () => null } as unknown as CollisionWorld,
+      bus: bus2,
+      rng: new Rng(8),
+      stats: new RunStats(),
+      player: () => playerStats,
+      healPlayer: () => {},
+      playerPos: { x: 0, z: 0 },
+      damagePlayer: () => {},
+    };
+  });
+
+  function cycle(delta: 1 | -1): void {
+    weapons2.update(DT, { ...neutralInput(), weaponDelta: delta }, view2, ctx2, proj);
+    weapons2.switchLeft = 0;
+  }
+
+  it('wraps between guns without passing through melee', () => {
+    expect(weapons2.currentId).toBe('pistol');
+    cycle(1);
+    expect(weapons2.currentId).toBe('shotgun');
+    cycle(1); // wraps: shotgun → pistol, NOT machete
+    expect(weapons2.currentId).toBe('pistol');
+    cycle(-1); // wraps backward: pistol → shotgun, NOT machete
+    expect(weapons2.currentId).toBe('shotgun');
+  });
+
+  it('cycling from melee returns to a gun, respecting direction', () => {
+    weapons2.update(DT, { ...neutralInput(), weaponSlot: 0 }, view2, ctx2, proj);
+    weapons2.switchLeft = 0;
+    expect(weapons2.currentId).toBe(MELEE.id);
+    cycle(1);
+    expect(weapons2.currentId).toBe('pistol'); // next → lowest gun slot
+    weapons2.update(DT, { ...neutralInput(), weaponSlot: 0 }, view2, ctx2, proj);
+    weapons2.switchLeft = 0;
+    cycle(-1);
+    expect(weapons2.currentId).toBe('shotgun'); // prev → highest gun slot
+  });
+
+  it('with every gun dry, cycling does not escape melee into an empty gun', () => {
+    for (const w of WEAPONS) {
+      if (w.kind === 'melee') continue;
+      const rt = weapons2.state(w.id);
+      rt.mag = 0;
+      rt.reserve = 0;
+    }
+    weapons2.update(DT, neutralInput(), view2, ctx2, proj); // auto-equips melee
+    expect(weapons2.currentId).toBe(MELEE.id);
+    cycle(1);
+    expect(weapons2.currentId).toBe(MELEE.id);
+    cycle(-1);
+    expect(weapons2.currentId).toBe(MELEE.id);
+  });
+
+  it('slot 0 still equips melee directly', () => {
+    weapons2.update(DT, { ...neutralInput(), weaponSlot: 0 }, view2, ctx2, proj);
+    expect(weapons2.currentId).toBe(MELEE.id);
+  });
+});

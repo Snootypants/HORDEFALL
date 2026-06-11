@@ -147,3 +147,80 @@ function neutral() {
     weaponSlot: -1, weaponDelta: 0, lookDX: 0, lookDY: 0, interact: false,
   };
 }
+
+describe('projectile contact uses visual hit volumes (fixes2 P3)', () => {
+  // Reuses the suite-level ctx/enemies/weapons from the previous describe via
+  // fresh local copies to keep cases independent.
+  let bus: EventBus<GameEvents>;
+  let enemies: EnemyManager;
+  let projectiles: PlayerProjectiles;
+  let ctx: CombatContext;
+
+  beforeEach(() => {
+    bus = new EventBus<GameEvents>();
+    enemies = new EnemyManager(ENEMIES, bus);
+    projectiles = new PlayerProjectiles();
+    const base = computePlayerStats(BALANCE.player, new Map(), UPGRADES);
+    ctx = {
+      enemies,
+      barrels: { raycast: () => -1, damage: () => {} } as unknown as Barrels,
+      collision: { raycast: () => null } as unknown as CollisionWorld,
+      bus,
+      rng: new Rng(9),
+      stats: new RunStats(),
+      player: () => base,
+      healPlayer: () => {},
+      playerPos: { x: 0, z: 0 },
+      damagePlayer: () => {},
+    };
+  });
+
+  const ARC = weaponById('arccaster')!;
+  const ARC_R = ARC.projectile!.radius;
+  // Rusher visual capsule: height 3.24, radius 0.81 (SHAPE_DIMS.capsule × 1.8).
+  const VIS_H = 1.8 * 1.8;
+  const VIS_R = 0.45 * 1.8;
+
+  function spawnRusher(x: number, z: number): number {
+    const cfg = enemyById('rusher')!;
+    return enemies.spawn(cfg, { hp: 100_000, damage: 1, speed: 0, scale: 1, xp: 0, score: 0 }, x, z, false, 1);
+  }
+
+  function fireArcBolt(x: number, y: number): boolean {
+    const idx = spawnRusher(0, -6);
+    const before = enemies.hp[idx];
+    projectiles.spawn(ARC, x, y, 0, 0, 0, -1, 40);
+    for (let i = 0; i < 30; i++) projectiles.update(1 / 60, ctx);
+    projectiles.clear();
+    const hit = enemies.hp[idx] < before;
+    enemies.freeSlot(idx);
+    return hit;
+  }
+
+  it('hits the visible head region the old body-sphere missed', () => {
+    // Old sphere topped out at ~1.83 (+proj radius); the visible head is ~3.2.
+    expect(fireArcBolt(0, 2.9)).toBe(true);
+    expect(fireArcBolt(0, VIS_H + ARC_R + 0.3)).toBe(false); // above the head
+  });
+
+  it('contact width = visual radius + projectile radius, full height', () => {
+    // y=2.0 is far above the old sphere's reach but inside the capsule trunk.
+    expect(fireArcBolt(VIS_R + ARC_R - 0.05, 2.0)).toBe(true);
+    expect(fireArcBolt(VIS_R + ARC_R + 0.12, 2.0)).toBe(false);
+  });
+
+  it('launcher still detonates at enemy contact and splashes neighbors', () => {
+    const launcher = weaponById('launcher')!;
+    const target = spawnRusher(0, -5);
+    const bystander = spawnRusher(2.5, -5);
+    const beforeBystander = enemies.hp[bystander];
+    let explosions = 0;
+    bus.on('explosion', () => explosions++);
+    const eff = launcher.damage; // direct payload; blast baked at spawn
+    projectiles.spawn(launcher, 0, 1.2, 0, 0, 0, -1, eff);
+    for (let i = 0; i < 30; i++) projectiles.update(1 / 60, ctx);
+    expect(explosions).toBe(1);
+    expect(enemies.hp[target]).toBeLessThan(100_000); // direct + blast
+    expect(enemies.hp[bystander]).toBeLessThan(beforeBystander); // splash
+  });
+});
