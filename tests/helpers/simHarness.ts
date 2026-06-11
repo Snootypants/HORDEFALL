@@ -63,7 +63,7 @@ export function simChecksum(sim: Simulation): string {
   const e = sim.enemies;
   for (let i = 0; i < e.highWater; i++) {
     if (!e.aliveFlags[i]) continue;
-    parts.push(i, e.posX[i], e.posZ[i], e.hp[i], e.state[i], e.yaw[i], e.status.checksumOf(i));
+    parts.push(i, e.posX[i], e.posY[i], e.groundY[i], e.posZ[i], e.hp[i], e.state[i], e.yaw[i], e.status.checksumOf(i));
   }
   const pp = sim.playerProjectiles;
   for (let i = 0; i < pp.alive.length; i++) {

@@ -19,6 +19,8 @@ const bossCfg = ENEMIES.find((e) => e.role === 'boss')!;
 
 const fakeCollision = {
   pushOutCircle: () => {},
+  pushOutCircleStepped: () => false,
+  groundHeightAt: () => 0,
   losBlocked: () => false,
 } as unknown as CollisionWorld;
 
@@ -38,6 +40,7 @@ function makeCtx(bus: EventBus<GameEvents>): EnemyUpdateCtx {
     slowAuraActive: false,
     aiThrottle: false,
     barrels: new Barrels([]),
+    rampEntries: [],
   };
 }
 

@@ -270,6 +270,63 @@ export class CollisionWorld {
   }
 
   /**
+   * Highest walkable surface under a circle: max box top ≤ maxY among boxes
+   * overlapping the circle's XZ footprint; 0 (the ground plane) otherwise.
+   */
+  groundHeightAt(x: number, z: number, radius: number, maxY: number): number {
+    let best = 0;
+    const cands = this.candidates(x - radius, z - radius, x + radius, z + radius);
+    for (let ci = 0; ci < cands.length; ci++) {
+      const b = this.boxes[cands[ci]];
+      if (b.maxY > maxY || b.maxY <= best) continue;
+      if (x + radius <= b.minX || x - radius >= b.maxX || z + radius <= b.minZ || z - radius >= b.maxZ) continue;
+      best = b.maxY;
+    }
+    return best;
+  }
+
+  /**
+   * Vertically-aware circle pushout for enemies. Boxes whose top is within
+   * stepHeight of the feet are climbable (skipped — ground snap raises the
+   * body); anything else overlapping [footY, topY] pushes the circle out,
+   * so a body too tall to fit under a platform bumps into its side instead
+   * of clipping through.
+   */
+  pushOutCircleStepped(pos: { x: number; z: number }, radius: number, footY: number, topY: number, stepHeight: number): boolean {
+    let pushed = false;
+    const cands = this.candidates(pos.x - radius, pos.z - radius, pos.x + radius, pos.z + radius);
+    for (let ci = 0; ci < cands.length; ci++) {
+      const b = this.boxes[cands[ci]];
+      if (b.maxY - footY <= stepHeight) continue; // climbable / walk-over
+      if (topY <= b.minY || footY >= b.maxY) continue; // clear above/below
+      const nx = clamp(pos.x, b.minX, b.maxX);
+      const nz = clamp(pos.z, b.minZ, b.maxZ);
+      const dx = pos.x - nx;
+      const dz = pos.z - nz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= radius * radius) continue;
+      pushed = true;
+      if (d2 < 1e-9) {
+        const exits = [
+          { d: pos.x - b.minX + radius, x: -1, z: 0 },
+          { d: b.maxX - pos.x + radius, x: 1, z: 0 },
+          { d: pos.z - b.minZ + radius, x: 0, z: -1 },
+          { d: b.maxZ - pos.z + radius, x: 0, z: 1 },
+        ];
+        exits.sort((a, b2) => a.d - b2.d);
+        pos.x += exits[0].x * exits[0].d;
+        pos.z += exits[0].z * exits[0].d;
+      } else {
+        const d = Math.sqrt(d2);
+        const push = radius - d;
+        pos.x += (dx / d) * push;
+        pos.z += (dz / d) * push;
+      }
+    }
+    return pushed;
+  }
+
+  /**
    * 2D circle pushout for ground enemies (cheap, ignores Y except band check).
    * Returns true if any pushout happened (used for steering "blocked" hints).
    */

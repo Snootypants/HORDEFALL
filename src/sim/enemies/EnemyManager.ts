@@ -56,6 +56,8 @@ export class EnemyManager {
   readonly typeIdx = new Uint8Array(MAX_ENEMIES);
   readonly posX = new Float32Array(MAX_ENEMIES);
   readonly posY = new Float32Array(MAX_ENEMIES);
+  /** Walkable surface height under each enemy (ramp/platform ascent). */
+  readonly groundY = new Float32Array(MAX_ENEMIES);
   readonly posZ = new Float32Array(MAX_ENEMIES);
   readonly velX = new Float32Array(MAX_ENEMIES);
   readonly velZ = new Float32Array(MAX_ENEMIES);
@@ -143,6 +145,7 @@ export class EnemyManager {
     this.typeIdx[idx] = typeIndex;
     this.posX[idx] = x;
     this.posY[idx] = 0;
+    this.groundY[idx] = 0;
     this.posZ[idx] = z;
     this.velX[idx] = 0;
     this.velZ[idx] = 0;

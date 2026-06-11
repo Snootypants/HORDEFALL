@@ -15,6 +15,8 @@ import type { CollisionWorld } from '../src/sim/collision';
 
 const fakeCollision = {
   pushOutCircle: () => {},
+  pushOutCircleStepped: () => false,
+  groundHeightAt: () => 0,
   losBlocked: () => false,
 } as unknown as CollisionWorld;
 
@@ -41,6 +43,7 @@ describe('enemies vs barrels', () => {
       slowAuraActive: false,
       aiThrottle: false,
       barrels,
+      rampEntries: [],
     };
 
     const minDist = BARREL_RADIUS + rusher.radius * rusher.scale;

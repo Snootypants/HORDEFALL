@@ -37,6 +37,8 @@ export interface MapData {
   safeZones: { x: number; z: number; radius: number }[];
   /** High-density chokepoint hints (danger zones for the minimap). */
   dangerZones: { x: number; z: number; radius: number }[];
+  /** Bottom-of-ramp access points — AI steering targets for platform play. */
+  rampEntries: { x: number; z: number }[];
 }
 
 const box = (
@@ -143,6 +145,7 @@ export function generateMap(config: MapConfig, seed: number): MapData {
     };
   }, 3.0);
   // Ramps: staircases of step AABBs leading onto each platform
+  const rampEntries: { x: number; z: number }[] = [];
   for (const p of platforms) {
     const cx = (p.minX + p.maxX) / 2;
     const cz = (p.minZ + p.maxZ) / 2;
@@ -161,6 +164,7 @@ export function generateMap(config: MapConfig, seed: number): MapData {
       sx += off;
       sz += offZ;
       if (Math.abs(sx) > half - 2 || Math.abs(sz) > half - 2) continue;
+      if (i === 0) rampEntries.push({ x: sx, z: sz }); // lowest step = entry
       boxes.push(
         dir <= 1
           ? box(sx, sz, stepLen, h, rampW, 'ramp')
@@ -216,5 +220,6 @@ export function generateMap(config: MapConfig, seed: number): MapData {
     playerSpawn,
     safeZones,
     dangerZones,
+    rampEntries,
   };
 }

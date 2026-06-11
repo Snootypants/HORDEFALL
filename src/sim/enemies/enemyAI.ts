@@ -13,7 +13,15 @@ import type { EnemyProjectiles } from './enemyProjectiles';
 import { Barrels, BARREL_RADIUS } from '../barrels';
 import { EnemyManager, EState } from './EnemyManager';
 import { thinkBoss } from './bossAI';
+import { SHAPE_DIMS } from '../../config/shapes';
 import { clamp, damp, dist2XZ, wrapAngle } from '../../core/math';
+
+/** Max ledge an enemy walks up without a ramp (matches ramp step rises). */
+const STEP_HEIGHT = 0.65;
+/** Fall speed when walking off an edge (deterministic, no real gravity). */
+const FALL_SPEED = 14;
+/** Extra vertical reach beyond body height for melee/contact attacks. */
+const REACH_MARGIN = 0.5;
 
 export interface EnemyUpdateCtx {
   dt: number;
@@ -33,6 +41,8 @@ export interface EnemyUpdateCtx {
   aiThrottle: boolean;
   /** Sim props that block enemy movement (live barrels). */
   barrels: Barrels;
+  /** Bottom-of-ramp access points (steering targets for platform play). */
+  rampEntries: readonly { x: number; z: number }[];
 }
 
 const neighborScratch: number[] = [];
@@ -120,21 +130,30 @@ export function updateEnemies(mgr: EnemyManager, ctx: EnemyUpdateCtx): void {
     }
     mgr.animPhase[i] += dt * (1 + Math.abs(mgr.velX[i]) + Math.abs(mgr.velZ[i]));
 
-    // World pushout on alternating ticks (halves static-collision cost)
+    // World pushout on alternating ticks (halves static-collision cost).
+    // The VISIBLE body height decides what the enemy fits under — too-tall
+    // bodies bump into platform sides instead of clipping heads through.
     if (((i + ((ctx.simTime * 60) | 0)) & 1) === 0) {
+      const radius = cfg.radius * mgr.scale[i];
+      const visualH = SHAPE_DIMS[cfg.shape].height * cfg.height * mgr.scale[i];
       posScratch.x = mgr.posX[i];
       posScratch.z = mgr.posZ[i];
-      ctx.collision.pushOutCircle(posScratch, cfg.radius * mgr.scale[i], 0.1, cfg.height * mgr.scale[i]);
-      pushOutOfBarrels(posScratch, cfg.radius * mgr.scale[i], ctx.barrels);
+      ctx.collision.pushOutCircleStepped(posScratch, radius, mgr.posY[i], mgr.posY[i] + visualH, STEP_HEIGHT);
+      pushOutOfBarrels(posScratch, radius, ctx.barrels);
       mgr.posX[i] = posScratch.x;
       mgr.posZ[i] = posScratch.z;
+      mgr.groundY[i] = ctx.collision.groundHeightAt(posScratch.x, posScratch.z, radius * 0.8, mgr.posY[i] + STEP_HEIGHT);
     }
 
-    // Boss contact damage during charge
+    // Vertical: snap up onto steps, fall off edges at a fixed rate.
+    if (mgr.groundY[i] > mgr.posY[i]) mgr.posY[i] = mgr.groundY[i];
+    else if (mgr.groundY[i] < mgr.posY[i]) mgr.posY[i] = Math.max(mgr.groundY[i], mgr.posY[i] - FALL_SPEED * dt);
+
+    // Boss contact damage during charge (3D: no hits through floors)
     if (mgr.state[i] === EState.Charging && ctx.playerAlive) {
       const d2 = dist2XZ(mgr.posX[i], mgr.posZ[i], ctx.playerX, ctx.playerZ);
       const r = cfg.radius * mgr.scale[i] + 1.0;
-      if (d2 < r * r) {
+      if (d2 < r * r && canReachPlayer(mgr, i, cfg, ctx)) {
         ctx.damagePlayer(mgr.damage[i], mgr.posX[i], mgr.posZ[i]);
         mgr.state[i] = EState.Chase;
         mgr.special[i] = 0;
@@ -173,6 +192,28 @@ function think(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpdateC
   // Seek (or hold preferred range for ranged/support roles)
   let seekX = dx / dist;
   let seekZ = dz / dist;
+
+  // Player is up on a platform and we're below: head for the best ramp
+  // entry (smallest detour) instead of pressing into the platform wall.
+  if (aggro && ctx.playerY - mgr.posY[i] > 1.2 && ctx.rampEntries.length > 0) {
+    let bestX = 0;
+    let bestZ = 0;
+    let bestCost = Infinity;
+    for (let r = 0; r < ctx.rampEntries.length; r++) {
+      const e = ctx.rampEntries[r];
+      const cost = Math.sqrt(dist2XZ(px, pz, e.x, e.z)) + Math.sqrt(dist2XZ(e.x, e.z, ctx.playerX, ctx.playerZ));
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestX = e.x;
+        bestZ = e.z;
+      }
+    }
+    const ed = Math.sqrt(dist2XZ(px, pz, bestX, bestZ));
+    if (ed > 1.5) { // far from the entry: walk to it; near it: climb at the player
+      seekX = (bestX - px) / (ed || 1);
+      seekZ = (bestZ - pz) / (ed || 1);
+    }
+  }
   if (cfg.preferredRange && aggro) {
     if (dist < cfg.preferredRange * 0.75) {
       seekX = -seekX;
@@ -271,10 +312,10 @@ function strike(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpdate
   const dz = ctx.playerZ - mgr.posZ[i];
   const dist = Math.sqrt(dx * dx + dz * dz);
 
-  // Boss slam: radial AoE
+  // Boss slam: radial AoE (gated in 3D — no slamming through floors)
   if (cfg.role === 'boss' && mgr.special[i] === -1) {
     mgr.special[i] = 0;
-    if (dist < 9) {
+    if (dist < 9 && canReachPlayer(mgr, i, cfg, ctx)) {
       const falloff = clamp(1 - dist / 9, 0.35, 1);
       ctx.damagePlayer(mgr.damage[i] * falloff, mgr.posX[i], mgr.posZ[i]);
     }
@@ -297,10 +338,25 @@ function strike(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpdate
     return;
   }
 
-  if (dist < cfg.attackRange * 1.4) {
+  if (dist < cfg.attackRange * 1.4 && canReachPlayer(mgr, i, cfg, ctx)) {
     ctx.damagePlayer(mgr.damage[i], mgr.posX[i], mgr.posZ[i]);
     mgr.bus.emit('enemy:attack', { enemyId: cfg.id, x: mgr.posX[i], z: mgr.posZ[i] });
   }
+}
+
+/**
+ * 3D melee/contact validity: the target must be within vertical reach of the
+ * body AND not separated by solid geometry (e.g. a platform floor).
+ */
+function canReachPlayer(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpdateCtx): boolean {
+  const bodyH = cfg.height * mgr.scale[i];
+  const reachTop = mgr.posY[i] + bodyH + REACH_MARGIN;
+  if (ctx.playerY > reachTop) return false; // can't reach that high
+  if (mgr.posY[i] > ctx.playerY + bodyH + REACH_MARGIN) return false; // nor that far down
+  return !ctx.collision.losBlocked(
+    mgr.posX[i], mgr.posY[i] + bodyH * 0.7, mgr.posZ[i],
+    ctx.playerX, ctx.playerY + 1.0, ctx.playerZ,
+  );
 }
 
 /** Exploder detonation: damages player AND other enemies (chain potential). */
@@ -312,7 +368,7 @@ function detonate(mgr: EnemyManager, i: number, cfg: EnemyConfig, ctx: EnemyUpda
   if (spec) {
     mgr.bus.emit('explosion', { x, y: 0.6, z, radius: spec.radius });
     const pd2 = dist2XZ(x, z, ctx.playerX, ctx.playerZ);
-    if (ctx.playerAlive && pd2 < spec.radius * spec.radius) {
+    if (ctx.playerAlive && pd2 < spec.radius * spec.radius && canReachPlayer(mgr, i, cfg, ctx)) {
       const falloff = clamp(1 - Math.sqrt(pd2) / spec.radius, 0.3, 1);
       ctx.damagePlayer(spec.damage * falloff, x, z);
     }

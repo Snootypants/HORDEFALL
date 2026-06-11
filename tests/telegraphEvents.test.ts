@@ -16,6 +16,8 @@ import type { EnemyConfig } from '../src/config/types';
 
 const fakeCollision = {
   pushOutCircle: () => {},
+  pushOutCircleStepped: () => false,
+  groundHeightAt: () => 0,
   losBlocked: () => false,
 } as unknown as CollisionWorld;
 
@@ -46,6 +48,7 @@ describe('enemy telegraph events', () => {
       slowAuraActive: false,
       aiThrottle: false,
       barrels: new Barrels([]),
+      rampEntries: [],
     };
   });
 

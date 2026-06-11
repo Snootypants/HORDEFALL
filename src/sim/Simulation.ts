@@ -150,6 +150,7 @@ export class Simulation {
       slowAuraActive: false,
       aiThrottle: true,
       barrels: this.barrels,
+      rampEntries: this.map.rampEntries,
     };
 
     this.enemies.setMinionSpawner((enemyId, x, z, wave) => {
